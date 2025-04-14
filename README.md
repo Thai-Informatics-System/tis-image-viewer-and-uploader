@@ -57,3 +57,40 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+
+
+ng generate library tis-image-and-file-upload-and-view --standalone=false
+
+ng build tis-image-and-file-upload-and-view --configuration=production
+
+ng build tis-image-and-file-upload-and-view --configuration=production --watch
+
+npm adduser
+
+npm publish --access public
+
+
+
+ng g c tis-preview-image --project=tis-image-and-file-upload-and-view
+
+
+git init
+
+git add .
+
+git commit -m "Initial commit"
+
+git remote add origin https://gitlab.com/npm-library/tis-dropdown.git
+
+git remote set-url origin https://gitlab.com/npm-library/tis-dropdown.git
+
+git remote -v
+
+git push -u origin master
+
+git branch -M main
+
+git push -uf origin main
+
+git push origin main

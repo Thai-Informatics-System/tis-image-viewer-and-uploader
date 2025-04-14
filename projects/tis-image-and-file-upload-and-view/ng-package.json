@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "../../dist/tis-image-and-file-upload-and-view",
+  "lib": {
+    "entryFile": "src/public-api.ts"
+  }
+}

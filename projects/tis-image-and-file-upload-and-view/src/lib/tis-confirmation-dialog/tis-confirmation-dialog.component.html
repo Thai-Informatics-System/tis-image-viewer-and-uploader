@@ -1,0 +1,18 @@
+<h1 mat-dialog-title style="align-items: center; display: flex;">
+    <mat-icon class="{{data?.iconClass}}">{{data?.icon}}</mat-icon>
+    <span>{{data?.title}}</span>
+</h1>
+<div mat-dialog-content>
+    @if(data?.html){
+        <h5 class="title">{{data?.message}}</h5>
+        <div [innerHTML]="data.html">
+        </div>
+    }
+    @else {
+        <span>{{data?.message}}</span>
+    }
+</div>
+<div mat-dialog-actions>
+    <button mat-button class="tis-text-upper {{data?.cancelButtonClass ?? 'tis-btn-primary'}}" (click)="onClose(false)" *ngIf="data?.cancelButtonText && data?.cancelButtonText != ''">{{data?.cancelButtonText}}</button>
+    <button mat-button class="tis-text-upper {{data?.approveButtonClass ?? 'tis-btn-primary'}}" (click)="onClose(true)" cdkFocusInitial *ngIf="data?.approveButtonText && data?.approveButtonText != ''">{{data?.approveButtonText}}</button>
+</div>

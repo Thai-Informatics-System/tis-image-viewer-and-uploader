@@ -1,0 +1,103 @@
+<div>
+    <input type="file" size="60" *ngIf="!config?.isMultiple" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" style="display: none;" />
+    <input type="file" size="60" *ngIf="config?.isMultiple" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" multiple style="display: none;" />
+    <!-- <input type="file" name="file" id="file-picker" style="display: none;" *ngIf="(filesArray?.length < config?.limit) && !disabled" [style.height]="config?.labelHeight"> -->
+    @if(viewType == 'card'){
+        <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}">
+            @if(filesArray?.length){
+                <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
+                    @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
+                        <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
+                        <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
+                            <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
+                                <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
+                            </div>
+                            <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                        </div>
+                        <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
+                            <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                            <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
+                            <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!disabled && !config.hiddenDownloadBtn">download_for_offline</span>
+                        </div>
+                        @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
+                            <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
+                            <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" (click)="loading? null : openImageSelector()">
+                                <mat-icon class="active">upload_file</mat-icon>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            @else if(!disabled){
+                <label style="display: flex; gap: 12px; flex-direction: column; justify-content: center; align-items: center; height: 100%; cursor: pointer;" (click)="loading? null : openImageSelector()">
+                    <mat-icon>upload_file</mat-icon>
+                    <p style="text-align: center; font-size: 14px;">
+                        {{label}}
+                        @if(hint && hint != ''){
+                            <br>
+                            <small>{{hint}}</small>
+                        }
+                    </p>
+                </label>
+            }
+            @else{
+                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; cursor: pointer;">
+                    <img src="assets/icons/norecordfound.png" alt="data not found" style="margin: auto; height: calc(var(--tis-image-picker-height) - 30px); max-height: 150px;">
+                </div>
+            }
+        </div>
+    }
+    @else if(viewType == 'list'){
+        <div [class.error-border]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="width: 100%; display: flex; gap: 12px; flex-direction: column; --tis-image-picker-height: {{config?.height ?? 0}}">
+            @if(filesArray?.length){
+                @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
+                    <div style="position: relative; display: flex; align-items: center; gap: 10px; border-radius: 5px; border: 1px solid black; padding: 5px; height: 56px;">
+                        <mat-icon style="width: 40px; min-width: 22px;">description</mat-icon>
+                        <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">{{file?.title}}</div>
+                        <div style="display: flex; align-items: center; gap: 4px;" *ngIf="!file?.loading">
+                            <button type="button" mat-icon-button aria-label="Download File" class="tis-icon-btn-sm tis-text-download" style="margin: 0px !important;" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!disabled && !config.hiddenDownloadBtn">
+                                <mat-icon>download_for_offline</mat-icon>
+                            </button>
+                            <button type="button" mat-icon-button aria-label="View File" class="tis-icon-btn-sm tis-text-view" style="margin: 0px !important;" (click)="openFile(file)" *ngIf="!config.hiddenPreview">
+                                <mat-icon>visibility</mat-icon>
+                            </button>
+                            <button type="button" mat-icon-button aria-label="Remove File" class="tis-icon-btn-sm tis-text-cancel" style="margin: 0px !important;" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;" style="width: 50px;" *ngIf="file?.loading">
+                            <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="20"></mat-progress-spinner>
+                        </div>
+                        <!-- <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!disabled && !config.hiddenDownloadBtn">download_for_offline</span> -->
+                    </div>
+                    @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
+                        <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid black; border-radius: 5px; padding: 5px; height: 56px;" (click)="loading? null : openImageSelector()">
+                            <mat-icon style="width: 40px; min-width: 22px;">upload_file</mat-icon>
+                            <div style="width: 100%;">
+                                <div style="display: flex; flex-direction: column; align-items: start; font-size: 14px;">
+                                    {{label}}
+                                    @if(hint && hint != ''){
+                                        <small>{{hint}}</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+            @else if(!disabled){
+                <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid black; border-radius: 5px; padding: 5px; height: 56px;" (click)="loading? null : openImageSelector()">
+                    <mat-icon style="width: 40px; min-width: 22px;">upload_file</mat-icon>
+                    <div style="width: 100%;">
+                        <div style="display: flex; flex-direction: column; align-items: start; font-size: 14px;">
+                            {{label}}
+                            @if(hint && hint != ''){
+                                <small>{{hint}}</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

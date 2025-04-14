@@ -1,0 +1,17 @@
+@if(isLoading){
+    <div style="width: 350px; height: 350px; display: flex; justify-content: center; align-items: center">
+        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="80"></mat-progress-spinner>
+    </div>
+}
+@else{
+    <div class="w-100 dialog-container" appScrolling style="--img-width: {{(imageWidth && imageWidth < 700) ? imageWidth : 650}}px; --img-height: {{(imageHeight && imageHeight < 600) ? imageHeight : 600}}px">
+        <mat-icon
+        class="close-icon"
+        (click)="onClose()">cancel</mat-icon>
+        <img 
+        *ngIf="data.url" 
+        [src]="data.url" 
+        alt="preview-image" 
+        class="preview-image {{orientation}}">
+    </div>
+}
