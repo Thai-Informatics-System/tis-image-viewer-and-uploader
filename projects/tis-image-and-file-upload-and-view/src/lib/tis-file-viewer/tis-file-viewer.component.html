@@ -1,1 +1,24 @@
-<p>tis-file-viewer works!</p>
+@if(safeUrl) {
+    <div class="tis-pdf-viewer">
+        @if(data.fileType == 'video') {
+            <mat-icon class="download-btn" (click)="downloadFile()" matTooltip="Download">download</mat-icon>
+            <!-- <button mat-icon-button color="primary" class="download-btn" >
+                <mat-icon>download</mat-icon>
+            </button> -->
+        }
+        @else {
+            <button mat-mini-fab color="primary" class="close-btn" (click)="onClose(null)" matTooltip="Close">
+                <mat-icon>clear</mat-icon>
+            </button>
+        }
+        @if(data.fileType == 'pdf') {
+            <tis-pdf-viewer [src]="safeUrl"></tis-pdf-viewer>
+        }
+        @else if(data.fileType == 'excel') {
+            <tis-excel-file-viewer [src]="safeUrl"></tis-excel-file-viewer>
+        }
+        @else if(data.fileType == 'video') {
+            <tis-video [src]="safeUrl"></tis-video>
+        }
+    </div>
+}

@@ -234,6 +234,14 @@
     justify-content: end;
 }
 
+.not-found-section{
+    svg{
+        margin: auto;
+        height: calc(var(--tis-image-picker-height) - 30px);
+        max-height: 150px;
+    }
+}
+
 
 /* Extra small devices (portrait phones, less than 576px) */
 @media (max-width: 575.98px) {

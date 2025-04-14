@@ -109,21 +109,16 @@ export class TisHelperService {
     return this.http.post(url, { filename, mimeType, type });
   }
 
-  attachImagesToEntity(url: string, data: any): Observable<any> {
+  attachFilesToEntity(url: string, data: any): Observable<any> {
     return this.http.post(url, data);
   }
 
-  uploadImageByEntity(url: string, data: any): Observable<any> {
-    return this.http.post(url, data);
-  }
-
-  putImage(url: string, file: File, contentType?: string): Observable<any> {
-    // const headers = new HttpHeaders({ "content-type": contentType ? contentType : "binary/octet-stream"}).set(SkipAuthInterceptorHeader, "");
-    const headers = new HttpHeaders({ "content-type": contentType ? contentType : "binary/octet-stream"});
+  putFile(url: string, file: File, contentType?: string): Observable<any> {
+    const headers = new HttpHeaders({ "content-type": contentType ? contentType : "binary/octet-stream"}).set('X-Skip-Auth-Interceptor', "");
     return this.http.put(url, file, { headers });
   }
 
-  deleteUploadedImage(url: string, data: any): Observable<any> {
+  deleteUploadedFile(url: string, data: any): Observable<any> {
     return this.http.post(url, data);
   }
 

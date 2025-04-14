@@ -11,6 +11,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { TisErrorDialogComponent } from './tis-error-dialog/tis-error-dialog.component';
 import { TisConfirmationDialogComponent } from './tis-confirmation-dialog/tis-confirmation-dialog.component';
+import { TisExcelFileViewerComponent } from './tis-file-viewer/tis-excel-file-viewer/tis-excel-file-viewer.component';
+import { TisPdfViewerComponent } from './tis-file-viewer/tis-pdf-viewer/tis-pdf-viewer.component';
+import { TisVideoComponent } from './tis-file-viewer/tis-video/tis-video.component';
+import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 
 
 const uiImports = [
@@ -28,11 +32,15 @@ const uiImports = [
     TisImageAndFileUploadAndViewComponent,
     TisPreviewImageComponent,
     TisFileViewerComponent,
+    TisExcelFileViewerComponent,
+    TisPdfViewerComponent,
+    TisVideoComponent,
     TisErrorDialogComponent,
     TisConfirmationDialogComponent
   ],
   imports: [
     CommonModule,
+    NgxExtendedPdfViewerModule,
     ...uiImports
   ],
   exports: [

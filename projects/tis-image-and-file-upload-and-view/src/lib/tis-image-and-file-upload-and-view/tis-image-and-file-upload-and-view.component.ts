@@ -6,8 +6,6 @@ import { BehaviorSubject, Observable, map, shareReplay } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
-import { FileUploadService } from '../services/file-upload.service';
-import { ImageUploadService } from '../services/image-upload.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
 
 @Component({
@@ -23,7 +21,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input() entityType!: string;
   @Input() entityId: any;
   @Input() viewType: 'card' | 'list' = 'card';
-  @Input() type: string = 'image';
+  @Input() type: 'image' | 'file' = 'image';
   @Input() label: string | null = null;
   @Input() disabled: boolean = false;
   @Input() data: any;
@@ -121,8 +119,6 @@ export class TisImageAndFileUploadAndViewComponent {
 
   constructor(
     public dialog: MatDialog,
-    private fileUploadService: FileUploadService,
-    private imageUploadService: ImageUploadService,
     private helper: TisHelperService,
     private breakpointObserver: BreakpointObserver
   ) { }
@@ -312,7 +308,7 @@ export class TisImageAndFileUploadAndViewComponent {
         let compressedImage = this.config?.isCompressed ? await this.helper.compressFile(e.target?.result, mimeType) : e.target.result;
 
         try {
-          let uploadResponse = await this.imageUploadService.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
+          let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
           let uploadData = uploadResponse.data.uploadUrlData;
           let dataUrl = await this.helper.getDataUrlFromFile(file);
 
@@ -327,7 +323,7 @@ export class TisImageAndFileUploadAndViewComponent {
           this.setSliderLoading();
           uploadedImages.push(currentImageData);
 
-          await this.imageUploadService.putImage(uploadData.uploadURL, compressedImage).toPromise();
+          await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
 
           // Final processing
           currentImageData.s3Url = currentImageData.tempS3Url;
@@ -361,7 +357,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
         });
 
-        this.imageUploadService.attachImagesToEntity(this.urlConfig.attachToEntity, { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig.attachToEntity, { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             resolve(ir);
           },
@@ -427,7 +423,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
   removeUploadedImage(img: any, index: number, silently: boolean = false) {
     console.log("removeUploadedImage:", img);
-    this.imageUploadService.deleteUploadedImage(this.urlConfig.removeImage, img).subscribe((r: any) => {
+    this.helper.deleteUploadedFile(this.urlConfig.removeImage, img).subscribe((r: any) => {
       console.log('Image Delete Res:', r);
       this.loading = false;
       this.filesArray.splice(index, 1);
@@ -492,7 +488,7 @@ export class TisImageAndFileUploadAndViewComponent {
         let buffer = new Uint8Array(<ArrayBuffer>reader.result);
 
         try {
-          let uploadResponse = await this.fileUploadService.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
+          let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
           let uploadData = uploadResponse.data.uploadUrlData;
 
           let currentFileData = {
@@ -505,7 +501,7 @@ export class TisImageAndFileUploadAndViewComponent {
           this.setSliderLoading();
           uploadedFiles.push(currentFileData);
 
-          await this.fileUploadService.putFile(uploadData.uploadURL, e.target.result).toPromise();
+          await this.helper.putFile(uploadData.uploadURL, e.target.result).toPromise();
 
           // Final processing
           currentFileData.s3Url = currentFileData.uploadData?.resourceUrl;
@@ -539,7 +535,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
         });
 
-        this.fileUploadService.attachFilesToEntity(this.urlConfig.attachToEntity, { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig.attachToEntity, { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             // this.filesArray = fa;
             this.filesArray[0].loading = false;
@@ -605,7 +601,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
   removeUploadedFile(file: any, index: number, silently = false) {
     console.log("removeUploadedFile:", file);
-    this.fileUploadService.deleteUploadedFile(this.urlConfig.removeImage, file).subscribe((r: any) => {
+    this.helper.deleteUploadedFile(this.urlConfig.removeImage, file).subscribe((r: any) => {
       console.log('File Delete Res:', r);
       this.loading = false;
       this.filesArray.splice(index, 1);

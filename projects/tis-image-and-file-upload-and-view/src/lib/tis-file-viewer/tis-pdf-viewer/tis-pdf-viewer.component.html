@@ -1,0 +1,42 @@
+@if (isError) {
+  <div class="flex tis-justify-content-center py-4">
+    <h3> Some Error Occurred in Loading PDF File. Please Try again. </h3>
+  </div>
+} 
+
+@if (!isError) {
+  <div class="tis-extended-pdf-viewer">
+    @if(loading) {
+      <div class="loading">
+        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
+      </div>
+    }
+    <ngx-extended-pdf-viewer [src]="src"
+      [showToolbar]="true"
+      [showSidebarButton]="true"
+      [showFindButton]="false"
+      [showPagingButtons]="true"
+      [showDrawEditor]="false"
+      [showStampEditor]="false"
+      [showTextEditor]="false"
+      [showZoomButtons]="true"
+      [showPresentationModeButton]="false"
+      [showOpenFileButton]="false"
+      [showPrintButton]="true"
+      [showDownloadButton]="true"
+      [showSecondaryToolbarButton]="false"
+      [showRotateButton]="true"
+      [showHandToolButton]="false"
+      [showScrollingButton]="true"
+      [showSpreadButton]="false"
+      [showPropertiesButton]="false"
+      [zoom]="'page-fit'"
+      (pdfDownloaded)="loadingFinished($event)"
+      (pdfLoaded)="loadingFinished($event)"
+      (pdfLoadingFailed)="loadingError($event)"
+    >
+    </ngx-extended-pdf-viewer>
+  </div>
+}
+  
+    

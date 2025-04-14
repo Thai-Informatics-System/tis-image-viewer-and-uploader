@@ -1,0 +1,20 @@
+.tis-pdf-viewer {
+    position: relative !important;
+    height: 100%;
+}
+
+.tis-pdf-viewer .close-btn {
+    position: absolute !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    z-index: 1 !important;
+}
+
+.tis-pdf-viewer .download-btn {
+    color: var(--tis-primary);
+    cursor: pointer;
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    z-index: 1 !important;
+}

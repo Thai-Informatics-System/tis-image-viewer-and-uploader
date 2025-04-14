@@ -1,6 +1,77 @@
 <div style="padding: 15px;">
-    <tis-image-and-file-upload-and-view [urlConfig]="urlConfig" [entityType]="'announcement_details'" [disabled]="false" viewType="card"
-        [options]="{selectorId: 'choosing-image-for-announcement-details', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
-        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="files" [dialogConfig]="this.getImagePickerDialogConfig()">
+    <h3 for="">Images with Initial State</h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="false"
+        [options]="{selectorId: 'choosing-image-for-image-details-card-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Images for View only with No Data</h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="true"
+        [options]="{selectorId: 'choosing-image-for-image-details-card-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Images with Card View</h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="false"
+        [options]="{selectorId: 'choosing-image-for-image-details-card-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Images with List View</h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="list" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="false"
+        [options]="{selectorId: 'choosing-image-for-image-details-list-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Images for View only </h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="true"
+        [options]="{selectorId: 'choosing-image-for-image-details-card-for-view-only', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br>
+
+    <tis-image-and-file-upload-and-view type="image" viewType="list" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="true"
+        [options]="{selectorId: 'choosing-image-for-image-details-list-for-view-only', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Files with Card View</h3>
+    <tis-image-and-file-upload-and-view type="file" viewType="card" [urlConfig]="urlConfig" [entityType]="'file_details'" [disabled]="false"
+        [options]="{selectorId: 'choosing-file-for-file-details-card-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".pdf,.jpeg,.jpg" label="Upload File" [data]="files" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Files with List View</h3>
+    <tis-image-and-file-upload-and-view type="file" viewType="list" [urlConfig]="urlConfig" [entityType]="'file_details'" [disabled]="false"
+        [options]="{selectorId: 'choosing-file-for-file-details-list-view', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".pdf,.jpeg,.jpg" label="Upload File" [data]="files" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br><br>
+
+    <h3 for="">Files for View only</h3>
+    <tis-image-and-file-upload-and-view type="file" viewType="card" [urlConfig]="urlConfig" [entityType]="'file_details'" [disabled]="true"
+        [options]="{selectorId: 'choosing-file-for-file-details-card-for-view-only', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".pdf,.jpeg,.jpg" label="Upload File" [data]="files" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br>
+
+    <tis-image-and-file-upload-and-view type="file" viewType="list" [urlConfig]="urlConfig" [entityType]="'file_details'" [disabled]="true"
+        [options]="{selectorId: 'choosing-file-for-file-details-list-for-view-only', height: '108px', isStoredDb: false, isMultiple: true, cols: 5, isCompressed: false}"
+        accept=".pdf,.jpeg,.jpg" label="Upload File" [data]="files" [dialogConfig]="this.getImagePickerDialogConfig()">
     </tis-image-and-file-upload-and-view>
 </div>
