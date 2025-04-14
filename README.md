@@ -196,6 +196,85 @@ The component uses Angular Material — ensure a theme is included:
 
 ---
 
+
+
+## 📡 API Contract for Upload Integration
+
+The component requires a pre-signed URL from your backend to upload files directly to cloud storage (like AWS S3). You must implement an API endpoint that responds with the following JSON structure:
+
+### ✅ Sample Response from `getUploadUrl`
+
+```json
+{
+  "data": {
+    "uploadUrlData": {
+      "uploadURL": "https://your-s3-bucket/your-object-key.jpg?...",
+      "fileName": "your-object-key.jpg",
+      "uploadPath": "/folder/your-object-key.jpg",
+      "resourceUrl": "https://your-s3-bucket/your-object-key.jpg"
+    }
+  },
+  "message": "Upload Url generated successfully!"
+}
+```
+
+- **uploadURL**: This is the pre-signed `PUT` URL. The component will upload the file directly to this URL.
+- **fileName**: Name of the file being uploaded.
+- **uploadPath**: Optional path metadata for organizing resources.
+- **resourceUrl**: The final public/accessible URL for accessing the uploaded file.
+
+---
+
+## 📤 How Upload Works Internally
+
+When a user selects a file:
+
+1. The component calls your `getUploadUrl` API with basic metadata (like file name/type).
+2. Your backend returns a `PUT` pre-signed URL via `uploadURL`.
+3. The component performs a **`PUT` request directly to that URL**, sending the image or file binary.
+4. After success, the `resourceUrl` is used for rendering or viewing.
+
+---
+
+## 🔌 Backend API Example (Node.js)
+
+Here’s a basic AWS S3 backend implementation in Node.js:
+
+```js
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3();
+
+app.post('/api/get-upload-url', (req, res) => {
+  const fileName = req.body.fileName;
+  const fileType = req.body.fileType;
+  const key = `cm_cases/${uuidv4()}.${fileType.split('/')[1]}`;
+
+  const params = {
+    Bucket: 'your-s3-bucket',
+    Key: key,
+    ContentType: fileType,
+    ACL: 'public-read',
+    Expires: 900,
+  };
+
+  const uploadURL = s3.getSignedUrl('putObject', params);
+  res.json({
+    data: {
+      uploadUrlData: {
+        uploadURL,
+        fileName,
+        uploadPath: `/${key}`,
+        resourceUrl: `https://your-s3-bucket.s3.amazonaws.com/${key}`
+      }
+    },
+    message: "Upload Url generated successfully!"
+  });
+});
+```
+
+---
+
+
 ## 🤝 Contributing
 
 1. Clone the repo
@@ -223,3 +302,4 @@ For bugs, suggestions, or feature requests, please open an issue on the [GitHub 
 ---
 
 > Made with ❤️ by [Thai Informatic Systems Co. Ltd](https://tis.co.th/)
+
