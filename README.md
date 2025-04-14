@@ -1,96 +1,225 @@
-# TisNgImageAndFileUploadAndView
+# tis-image-and-file-upload-and-view
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.6.
+An all-in-one **image and file upload/view** Angular component by **Thai Informatic Systems Co. Ltd.**, designed for modern enterprise applications. This library provides a highly customizable drag-and-drop or button-triggered upload UI, with seamless preview and viewer integration for files including images, PDFs, videos, Excel, and more.
 
-## Development server
+[![npm version](https://img.shields.io/npm/v/@servicemind.tis/tis-image-and-file-upload-and-view)](https://www.npmjs.com/package/@servicemind.tis/tis-image-and-file-upload-and-view)
+[![npm downloads](https://img.shields.io/npm/dm/@servicemind.tis/tis-image-and-file-upload-and-view)](https://www.npmjs.com/package/@servicemind.tis/tis-image-and-file-upload-and-view)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
-```
+## 🚀 Features
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- ✅ Image and file upload with S3-style pre-signed URL handling
+- ✅ Support for images, PDFs, Excel, CSV, videos, and raw files
+- ✅ Built-in preview & viewer components
+- ✅ Optional confirmation dialogs
+- ✅ Fully customizable UI and dialog labels
+- ✅ Support for standalone and module-based Angular apps
+- ✅ Supports multiple uploads, size control, and compression toggle
 
-## Code scaffolding
+---
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## 📦 Installation
 
 ```bash
-ng build
+npm install @servicemind.tis/tis-image-and-file-upload-and-view
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+### Peer Dependencies
 
 ```bash
-ng test
+npm install @angular/material @angular/cdk
 ```
 
-## Running end-to-end tests
+---
 
-For end-to-end (e2e) testing, run:
+## 🧩 Module Setup
+
+```ts
+import { TisImageAndFileUploadAndViewModule } from '@servicemind.tis/tis-image-and-file-upload-and-view';
+
+@NgModule({
+  imports: [TisImageAndFileUploadAndViewModule]
+})
+export class MyFeatureModule {}
+```
+
+---
+
+## ⚙️ Configuration Interfaces
+
+### `UrlConfig`
+
+```ts
+export interface UrlConfig {
+  getUploadUrl: string;
+  attachToEntity: string;
+  removeImage: string;
+}
+```
+
+### `DialogConfig`
+
+```ts
+export interface DialogConfig {
+  title: string;
+  message: string | null;
+  iconClass: string;
+  icon: string;
+  approveButtonText: string | null;
+  approveButtonClass: string;
+  cancelButtonText: string | null;
+  cancelButtonClass: string;
+}
+```
+
+---
+
+## 🧠 Component: `<tis-image-and-file-upload-and-view>`
+
+This is the main component that allows users to upload and preview files.
+
+### ✅ Inputs
+
+| Input         | Type                | Description |
+|---------------|---------------------|-------------|
+| `urlConfig`   | `UrlConfig`         | API endpoints for upload, attach, delete |
+| `entityType`  | `string`            | Type of the associated entity |
+| `disabled`    | `boolean`           | Disable upload actions |
+| `viewType`    | `'card'`            | View format |
+| `options`     | `UploadOptions`     | Visual and functional configurations |
+| `accept`      | `string`            | Allowed file types (e.g., `.jpg,.png`) |
+| `label`       | `string`            | Upload label |
+| `data`        | `any[]`             | Existing file data to render |
+| `dialogConfig`| `DialogConfig`      | Custom confirmation dialog settings |
+
+---
+
+## 📤 Example Usage
+
+### HTML
+
+```html
+<tis-image-and-file-upload-and-view
+  [urlConfig]="urlConfig"
+  [entityType]="'announcement_details'"
+  [disabled]="false"
+  viewType="card"
+  [options]="{
+    selectorId: 'choosing-image-for-announcement-details',
+    height: '108px',
+    isStoredDb: false,
+    isMultiple: true,
+    cols: 5,
+    isCompressed: false
+  }"
+  accept=".png,.jpeg,.jpg"
+  label="Upload Image"
+  [data]="files"
+  [dialogConfig]="getImagePickerDialogConfig()">
+</tis-image-and-file-upload-and-view>
+```
+
+### Component (TS)
+
+```ts
+urlConfig: UrlConfig = {
+  getUploadUrl: 'https://your-api/get-upload-url',
+  attachToEntity: 'https://your-api/attach-to-entity',
+  removeImage: 'https://your-api/remove-url',
+};
+
+files = [
+  {
+    s3Url: 'https://bucket-url/file1.jpg',
+    uploadData: {
+      uploadURL: 'https://bucket-url/upload',
+      fileName: 'example.jpg',
+      uploadPath: '/entity/example.jpg',
+      resourceUrl: 'https://bucket-url/example.jpg'
+    }
+  }
+];
+
+getImagePickerDialogConfig(): DialogConfig {
+  return {
+    title: 'Delete Image',
+    message: 'Are you sure you want to delete this image?',
+    iconClass: 'tis-text-danger',
+    icon: 'delete',
+    approveButtonText: 'Yes',
+    approveButtonClass: 'tis-btn-danger',
+    cancelButtonText: 'No',
+    cancelButtonClass: 'tis-btn-primary'
+  };
+}
+```
+
+---
+
+## 🖼️ File Types Supported
+
+Component auto-detects and handles:
+
+- 📄 PDF
+- 📷 Images (`jpg`, `jpeg`, `png`)
+- 📹 Videos
+- 📊 Excel & CSV
+- 📦 Raw files (opens via download or fallback preview)
+
+---
+
+## 🔌 Standalone App Integration
+
+In `main.ts`:
+
+```ts
+import { provideHttpClient } from '@angular/common/http';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideHttpClient()
+  ]
+});
+```
+
+---
+
+## 🎨 Styling
+
+The component uses Angular Material — ensure a theme is included:
+
+```scss
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+```
+
+---
+
+## 🤝 Contributing
+
+1. Clone the repo
+2. Run `npm install`
+3. Use the demo app to test (`projects/` directory)
+4. Submit a PR or issue with details
+
+---
+
+## 🚀 Publishing to npm
 
 ```bash
-ng e2e
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+GitHub Actions will build and publish to npm automatically if configured.
 
-## Additional Resources
+---
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## 📬 Support / Questions
 
+For bugs, suggestions, or feature requests, please open an issue on the [GitHub repository](https://github.com/Thai-Informatics-System/tis-image-and-file-upload-and-view).
 
+---
 
-ng generate library tis-image-and-file-upload-and-view --standalone=false
-
-ng build tis-image-and-file-upload-and-view --configuration=production
-
-ng build tis-image-and-file-upload-and-view --configuration=production --watch
-
-npm adduser
-
-npm publish --access public
-
-
-
-ng g c tis-preview-image --project=tis-image-and-file-upload-and-view
-
-
-git init
-
-git add .
-
-git commit -m "Initial commit"
-
-git remote add origin https://gitlab.com/npm-library/tis-dropdown.git
-
-git remote set-url origin https://gitlab.com/npm-library/tis-dropdown.git
-
-git remote -v
-
-git push -u origin master
-
-git branch -M main
-
-git push -uf origin main
-
-git push origin main
+> Made with ❤️ by [Thai Informatic Systems Co. Ltd](https://tis.co.th/)
