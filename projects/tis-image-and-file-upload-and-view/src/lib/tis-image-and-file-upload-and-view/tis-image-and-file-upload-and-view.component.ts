@@ -1,12 +1,22 @@
 import { Component, EventEmitter, Input, Output, SimpleChanges } from '@angular/core';
 import { TisFileViewerComponent } from '../tis-file-viewer/tis-file-viewer.component';
-import type { DialogConfig, FileViewerDialogData, FileViewerFileType, UrlConfig } from '../interfaces';
+import type { DialogConfig, FileViewerDialogData, FileViewerFileType, OptionConfig, UrlConfig } from '../interfaces';
 import { TisPreviewImageComponent } from '../tis-preview-image/tis-preview-image.component';
 import { BehaviorSubject, Observable, map, shareReplay } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
+import { Config } from '../interfaces/config.type';
+
+const generateRandomString = (length: number): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 @Component({
   selector: 'tis-image-and-file-upload-and-view',
@@ -28,7 +38,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input() hint: string | null = null;
   @Input() accept: string = '';
   @Input() selectedId: any = null;
-  @Input() options: any = null;
+  @Input() options: OptionConfig | null = null;
   @Input() required: boolean = false;
   @Input() previewOnly: boolean = false;
   @Input() previewInFlex: boolean = false;
@@ -48,20 +58,19 @@ export class TisImageAndFileUploadAndViewComponent {
   isTab$!: Observable<boolean>;
 
 
-  config: any = {
+  config: Config = {
     isCompressed: false,
     hiddenDeleteBtn: false,
     hiddenPreview: false,
     selectionMode: false,
     isStoredDb: false,
     isMultiple: false,
-    fileSize: null,
     limit: 10,
     cols: 5,
     colsForTab: 5,
     colsForMobile: 3,
     height: '130px',
-    selectorId: 'choosing-img',
+    selectorId: generateRandomString(10),
   };
 
   isSliderLoaded = true;
@@ -174,6 +183,13 @@ export class TisImageAndFileUploadAndViewComponent {
     if (changes['entityType']) {
       this.currentEntityType = changes['entityType'].currentValue;
     }
+    if (changes['urlConfig']) {
+      this.urlConfig = changes['urlConfig'].currentValue;
+      this.config.isStoredDb = false;
+      if (this.urlConfig?.attachToEntity) {
+        this.config.isStoredDb = true;
+      }
+    }
     if (changes['options']) {
       this.prepareConfig();
     }
@@ -208,8 +224,9 @@ export class TisImageAndFileUploadAndViewComponent {
       this.config.selectionMode = this.options?.selectionMode;
     }
 
-    if (this.options?.isStoredDb) {
-      this.config.isStoredDb = this.options?.isStoredDb;
+    this.config.isStoredDb = false;
+    if (this.urlConfig?.attachToEntity) {
+      this.config.isStoredDb = true;
     }
 
     if (this.options?.isMultiple) {
@@ -357,7 +374,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
         });
 
-        this.helper.attachFilesToEntity(this.urlConfig.attachToEntity, { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             resolve(ir);
           },
@@ -375,19 +392,24 @@ export class TisImageAndFileUploadAndViewComponent {
     event.stopPropagation();
     if (this.isEnableDeleteConfirmation) {
       let confirmBoxData: DialogConfig = {
-        title: this.dialogConfig.title,
-        message: this.deleteConfirmationMsg ?? this.dialogConfig.message,
-        iconClass: this.dialogConfig.iconClass,
-        icon: this.dialogConfig.icon,
-        approveButtonText: this.dialogConfig.approveButtonText,
-        approveButtonClass: this.dialogConfig.approveButtonClass,
-        cancelButtonText: this.dialogConfig.cancelButtonText,
-        cancelButtonClass: this.dialogConfig.cancelButtonClass
+        title: this.dialogConfig?.title || 'Delete Image',
+        message: this.deleteConfirmationMsg || 'Are you sure, you want to delete this image?',
+        iconClass: this.dialogConfig?.iconClass || 'tis-text-danger',
+        icon: this.dialogConfig?.icon || 'delete',
+        approveButtonText: this.dialogConfig?.approveButtonText || 'Yes, delete',
+        approveButtonClass: `tis-approve-button ${this.dialogConfig?.approveButtonClass}`,
+        cancelButtonText: this.dialogConfig?.cancelButtonText || 'No',
+        cancelButtonClass: `tis-cancel-button ${this.dialogConfig?.cancelButtonClass}`
       };
+
+      const panelClass = ['tis-confirmation-dialog'];
+      if(this.dialogConfig?.panelClass){
+        panelClass.push(this.dialogConfig.panelClass);
+      }
 
       const dialogRef = this.dialog.open(TisConfirmationDialogComponent, {
         width: "450px",
-        panelClass: ['tis-confirmation-dialog'],
+        panelClass: panelClass,
         data: confirmBoxData,
         disableClose: true,
       });
@@ -535,7 +557,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
         });
 
-        this.helper.attachFilesToEntity(this.urlConfig.attachToEntity, { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             // this.filesArray = fa;
             this.filesArray[0].loading = false;
@@ -554,19 +576,24 @@ export class TisImageAndFileUploadAndViewComponent {
     event.stopPropagation();
     if (this.isEnableDeleteConfirmation) {
       let confirmBoxData: DialogConfig = {
-        title: this.dialogConfig.title,
-        message: this.deleteConfirmationMsg ?? this.dialogConfig.message,
-        iconClass: this.dialogConfig.iconClass,
-        icon: this.dialogConfig.icon,
-        approveButtonText: this.dialogConfig.approveButtonText,
-        approveButtonClass: this.dialogConfig.approveButtonClass,
-        cancelButtonText: this.dialogConfig.cancelButtonText,
-        cancelButtonClass: this.dialogConfig.cancelButtonClass
+        title: this.dialogConfig?.title || 'Delete File',
+        message: this.deleteConfirmationMsg || 'Are you sure, you want to delete this file?',
+        iconClass: this.dialogConfig?.iconClass || 'tis-text-danger',
+        icon: this.dialogConfig?.icon || 'delete',
+        approveButtonText: this.dialogConfig?.approveButtonText || 'Yes, delete',
+        approveButtonClass: `tis-approve-button ${this.dialogConfig?.approveButtonClass}`,
+        cancelButtonText: this.dialogConfig?.cancelButtonText || 'No',
+        cancelButtonClass: `tis-cancel-button ${this.dialogConfig?.cancelButtonClass}`
       };
+
+      const panelClass = ['tis-confirmation-dialog'];
+      if(this.dialogConfig?.panelClass){
+        panelClass.push(this.dialogConfig.panelClass);
+      }
 
       const dialogRef = this.dialog.open(TisConfirmationDialogComponent, {
         width: "450px",
-        panelClass: ['tis-simple-confirmation'],
+        panelClass: panelClass,
         data: confirmBoxData,
         disableClose: true,
       });
@@ -728,6 +755,8 @@ export class TisImageAndFileUploadAndViewComponent {
 
   setHeight(id: string) {
     let height = document.getElementById(id)?.offsetWidth;
+    console.log("=== setHeight::height ===", id, height);
+    
     return `${height}px`;
   }
 }

@@ -58,11 +58,11 @@
 }
 
 .tis-text-download {
-    color: var(--tis-download, #3838a2);
+    color: var(--tis-download, var(--mat-sys-primary));
 }
 
 .tis-text-view {
-    color: var(--tis-primary, #3838a2);
+    color: var(--tis-primary, var(--mat-sys-primary));
 }
 
 .tis-text-cancel {
@@ -131,7 +131,7 @@
 }
 
 .image-picker-label.error {
-    border: 2px dashed var(--mat-form-field-error-text-color);
+    border: 2px dashed var(--tis-error, #a00404);
 }
 
 .image-list .image-item {
@@ -156,7 +156,7 @@
 }
 
 .image-list .image-item.selected {
-    border: 3px solid var(--tis-item-selected, #3838a2) !important;
+    border: 3px solid var(--tis-item-selected, var(--mat-sys-primary)) !important;
 }
 
 .image-list .image-item .mat-icon {
@@ -179,7 +179,7 @@
 }
 
 .image-list .image-item .download {
-    color: var(--tis-download, #3838a2);
+    color: var(--tis-download, var(--mat-sys-primary));
     background-color: white;
     border-radius: 20px;
     position: absolute;
@@ -195,12 +195,12 @@
 }
 
 .error-border {
-    border: 1px solid var(--mat-form-field-error-text-color) !important;
+    border: 1px solid var(--tis-error-color, #a00404) !important;
     border-radius: 5px !important;
 }
 
 .download {
-    color: var(--tis-download, #3838a2);
+    color: var(--tis-download, var(--mat-sys-primary));
     position: absolute;
     top: -10px;
     left: -10px;
@@ -234,8 +234,8 @@
     justify-content: end;
 }
 
-.not-found-section{
-    svg{
+.not-found-section {
+    svg {
         margin: auto;
         height: calc(var(--tis-image-picker-height) - 30px);
         max-height: 150px;
@@ -256,3 +256,18 @@
         padding: 15px;
     }
 }
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) and (max-width: 991.98px) {}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) and (max-width: 1199.98px) {}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) and (max-width: 1399.98px) {}
+
+/* Extra Extra large devices (large desktops, 1400px and up) */
+@media (min-width: 1400px) and (max-width: 1599.98px) {}
+
+/* Extra Extra Extra large devices (large desktops, 1600px and up) */
+@media (min-width: 1600px) {}

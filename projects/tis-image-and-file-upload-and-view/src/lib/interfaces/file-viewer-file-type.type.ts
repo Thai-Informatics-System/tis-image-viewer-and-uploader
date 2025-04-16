@@ -5,19 +5,37 @@ export interface FileViewerDialogData {
     fileType: FileViewerFileType;
 }
 
+export interface OptionConfig {
+    selectorId?: string;
+    limit?: number;
+    fileSize?: number;
+    height?: string;
+    isCompressed?: boolean;
+    isSliderPreview?: boolean;
+    hiddenDownloadBtn?: boolean;
+    hiddenDeleteBtn?: boolean;
+    hiddenPreview?: boolean;
+    isMultiple?: boolean;
+    selectionMode?: boolean;
+    cols?: number;
+    colsForTab?: number;
+    colsForMobile?: number;
+}
+
 export interface UrlConfig {
     getUploadUrl: string;
-    attachToEntity: string;
+    attachToEntity: string | null;
     removeImage: string;
 }
 
 export interface DialogConfig {
-    title: string;
-    message: string | null;
-    iconClass: string;
-    icon: string;
-    approveButtonText: string | null;
-    approveButtonClass: string;
-    cancelButtonText: string | null;
-    cancelButtonClass: string;
+    panelClass?: string | null;
+    title?: string | null;
+    message?: string | null;
+    iconClass?: string | null;
+    icon?: string | null;
+    approveButtonText?: string | null;
+    approveButtonClass?: string | null;
+    cancelButtonText?: string | null;
+    cancelButtonClass?: string | null;
 }

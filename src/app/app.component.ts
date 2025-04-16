@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { DialogConfig, TisImageAndFileUploadAndViewModule, UrlConfig } from 'tis-image-and-file-upload-and-view';
+import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, UrlConfig } from 'tis-image-and-file-upload-and-view';
 
 @Component({
   selector: 'app-root',
@@ -11,8 +11,10 @@ import { DialogConfig, TisImageAndFileUploadAndViewModule, UrlConfig } from 'tis
 })
 export class AppComponent {
   title = 'tis-ng-image-and-file-upload-and-view';
+  selectedId = 1;
   images = [
     {
+      "id": 1,
       "s3Url": "https://obk-servicemind-uat-resources.s3.ap-southeast-1.amazonaws.com/parcel_create/da226bf2-4e5f-4180-94d8-6746b1ce139b.jpg",
       "title": "Image 01",
       "uploadData": {
@@ -28,6 +30,7 @@ export class AppComponent {
       }
     },
     {
+      "id": 2,
       "s3Url": "https://obk-servicemind-uat-resources.s3.ap-southeast-1.amazonaws.com/parcel_create/31033a2a-5db6-450d-a541-58a94654dd0c.jpg",
       "title": "Image 02",
       "uploadData": {
@@ -43,6 +46,7 @@ export class AppComponent {
       }
     },
     {
+      "id": 3,
       "s3Url": "https://obk-servicemind-uat-resources.s3.ap-southeast-1.amazonaws.com/parcel_create/b8424185-30c6-4f44-ba1e-ff616dfd6576.jpg",
       "title": "Image 03",
       "uploadData": {
@@ -61,6 +65,7 @@ export class AppComponent {
 
   files = [
     {
+      "id": 1,
       "s3Url": "https://obk-servicemind-uat-resources.s3.ap-southeast-1.amazonaws.com/parcel_create/da226bf2-4e5f-4180-94d8-6746b1ce139b.jpg",
       "title": "File 01",
       "uploadData": {
@@ -76,6 +81,7 @@ export class AppComponent {
       }
     },
     {
+      "id": 2,
       "s3Url": "https://servicemind-resources-staging.s3.ap-southeast-1.amazonaws.com/survey_orders/6c537889-c72a-48ca-9134-638e8d6a1aac.sql",
       "title": "File 02",
       "uploadData": {
@@ -91,6 +97,7 @@ export class AppComponent {
       }
     },
     {
+      "id": 3,
       "s3Url": "https://obk-servicemind-uat-resources.s3.ap-southeast-1.amazonaws.com/house-rules-en/04f6a718-2b6b-4ce5-98a5-cf152e80c091.pdf",
       "title": "File 03",
       "uploadData": {
@@ -109,24 +116,57 @@ export class AppComponent {
 
   urlConfig: UrlConfig = {
     getUploadUrl: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/get-upload-url',
-    attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
+    // attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
+    attachToEntity: null,
     removeImage: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/remove-url',
   };
+
+  optionConfig: OptionConfig = {
+    selectorId: 'choosing-image-for-image-details-card-view',
+    height: '108px',
+    limit: 10,
+    fileSize: (1024 * 5), // for 5 MB;
+    isCompressed: false,
+    hiddenDeleteBtn: false,
+    hiddenPreview: false,
+    selectionMode: false,
+    isMultiple: false,
+    cols: 5,
+    colsForTab: 5,
+    colsForMobile: 3,
+  }
 
   ngOnInit() {
   }
 
   getImagePickerDialogConfig(){
     let config: DialogConfig = {
-      title: 'Delete Image',
-      message: 'Are you sure, you want to delete this image?',
-      iconClass: "tis-text-danger",
-      icon: "delete",
-      approveButtonText: 'Yes',
-      approveButtonClass: "tis-btn-danger",
-      cancelButtonText: 'No',
-      cancelButtonClass: "tis-btn-primary"
+      panelClass: 'tis-simple-confirmation',
+      title: 'Delete Images',
+      // message: 'Are you sure, you want to delete this image?',
+      // iconClass: "tis-text-danger",
+      // icon: "delete",
+      // approveButtonText: 'Yes',
+      // approveButtonClass: "tis-btn-danger",
+      // cancelButtonText: 'No',
+      // cancelButtonClass: "tis-btn-primary"
     }
     return config;
+  }
+
+  getOptions(config: any){
+    let options: OptionConfig = {
+      ...this.optionConfig,
+      ...config
+    }
+
+    delete options.selectorId;
+
+    return options;
+  }
+
+  onFileSelect(data: any){
+    this.selectedId = data?.id;
+    console.log("==== onFileSelect ====", data);
   }
 }
