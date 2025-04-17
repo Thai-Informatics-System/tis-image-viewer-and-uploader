@@ -393,7 +393,7 @@ export class TisImageAndFileUploadAndViewComponent {
     if (this.isEnableDeleteConfirmation) {
       let confirmBoxData: DialogConfig = {
         title: this.dialogConfig?.title || 'Delete Image',
-        message: this.deleteConfirmationMsg || 'Are you sure, you want to delete this image?',
+        message: this.deleteConfirmationMsg || (this.dialogConfig?.message || 'Are you sure, you want to delete this image?'),
         iconClass: this.dialogConfig?.iconClass || 'tis-text-danger',
         icon: this.dialogConfig?.icon || 'delete',
         approveButtonText: this.dialogConfig?.approveButtonText || 'Yes, delete',
@@ -577,7 +577,7 @@ export class TisImageAndFileUploadAndViewComponent {
     if (this.isEnableDeleteConfirmation) {
       let confirmBoxData: DialogConfig = {
         title: this.dialogConfig?.title || 'Delete File',
-        message: this.deleteConfirmationMsg || 'Are you sure, you want to delete this file?',
+        message: this.deleteConfirmationMsg || (this.dialogConfig?.message || 'Are you sure, you want to delete this file?'),
         iconClass: this.dialogConfig?.iconClass || 'tis-text-danger',
         icon: this.dialogConfig?.icon || 'delete',
         approveButtonText: this.dialogConfig?.approveButtonText || 'Yes, delete',
