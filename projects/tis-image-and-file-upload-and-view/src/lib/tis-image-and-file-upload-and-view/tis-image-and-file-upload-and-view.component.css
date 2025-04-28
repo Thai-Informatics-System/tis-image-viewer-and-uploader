@@ -237,7 +237,7 @@
 .not-found-section {
     svg {
         margin: auto;
-        height: calc(var(--tis-image-picker-height) - 30px);
+        height: calc(var(--tis-image-picker-height) - 45px);
         max-height: 150px;
     }
 }
