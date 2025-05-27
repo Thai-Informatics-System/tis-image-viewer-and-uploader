@@ -30,7 +30,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input({required: true}) urlConfig!: UrlConfig;
   @Input() entityType!: string;
   @Input() entityId: any;
-  @Input() viewType: 'card' | 'list' = 'card';
+  @Input() viewType: 'card' | 'list' | 'single-card' = 'card';
   @Input() type: 'image' | 'file' = 'image';
   @Input() label: string | null = null;
   @Input() disabled: boolean = false;
@@ -146,6 +146,10 @@ export class TisImageAndFileUploadAndViewComponent {
       );
     
     this.prepareConfig();
+
+    if(this.viewType == 'single-card'){
+      this.generateFilesForSingleCard();
+    }
   }
 
   ngAfterViewInit() {
@@ -269,11 +273,11 @@ export class TisImageAndFileUploadAndViewComponent {
     }, 20);
   }
 
-  openImageSelector() {
-    document.getElementById(this.config?.selectorId)?.click();
+  openImageSelector(selectorId: string = this.config?.selectorId) {
+    document.getElementById(selectorId)?.click();
   }
 
-  async detectImages(event: any) {
+  async detectImages(event: any, index: number = -1) {
     console.log('detectImages:', event);
     event.preventDefault();
 
@@ -387,7 +391,6 @@ export class TisImageAndFileUploadAndViewComponent {
     });
   }
 
-
   deleteImage(event: any, t: any, index: number, img: any) {
     event.stopPropagation();
     if (this.isEnableDeleteConfirmation) {
@@ -426,7 +429,6 @@ export class TisImageAndFileUploadAndViewComponent {
     }
   }
 
-
   /*REMOVE SELECTED IMAGE  */
   removeImage(event: any, index: number, img: any) {
     this.loading = true;
@@ -458,7 +460,7 @@ export class TisImageAndFileUploadAndViewComponent {
     (err: any) => { this.filesArray[index].loading = false; this.helper.showErrorMsg(err, "Error") })
   }
 
-  async detectFiles(event: any) {
+  async detectFiles(event: any, index: number = -1) {
     console.log('detectFiles:', event);
     event.preventDefault();
 
@@ -758,5 +760,15 @@ export class TisImageAndFileUploadAndViewComponent {
     console.log("=== setHeight::height ===", id, height);
     
     return `${height}px`;
+  }
+
+  generateFilesForSingleCard(){
+    if(this.filesArray?.length < this.config.limit){
+      for (let index = 0; index < (this.config.limit - this.filesArray?.length); index++) {
+        this.filesArray.push({
+          selectorId: generateRandomString(10)
+        });
+      }
+    }
   }
 }

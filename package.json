@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build-library": "ng build tis-image-and-file-upload-and-view --configuration=production",
+    "build-library-watch": "ng build tis-image-and-file-upload-and-view --configuration=production --watch",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
