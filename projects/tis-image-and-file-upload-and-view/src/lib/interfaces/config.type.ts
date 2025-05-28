@@ -14,4 +14,5 @@ export interface Config {
     cols: number;
     colsForTab: number;
     colsForMobile: number;
+    enableImageTags?: boolean;
 }

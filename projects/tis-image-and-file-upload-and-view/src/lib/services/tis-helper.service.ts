@@ -113,6 +113,10 @@ export class TisHelperService {
     return this.http.post(url, data);
   }
 
+  updateTag(url: string, data: any): Observable<any> {
+    return this.http.post(url, data);
+  }
+
   putFile(url: string, file: File, contentType?: string): Observable<any> {
     const headers = new HttpHeaders({ "content-type": contentType ? contentType : "binary/octet-stream"}).set('X-Skip-Auth-Interceptor', "");
     return this.http.put(url, file, { headers });

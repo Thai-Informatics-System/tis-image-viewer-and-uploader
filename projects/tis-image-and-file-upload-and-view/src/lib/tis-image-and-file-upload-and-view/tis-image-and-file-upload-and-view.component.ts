@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output, SimpleChanges } from '@angular/
 import { TisFileViewerComponent } from '../tis-file-viewer/tis-file-viewer.component';
 import type { DialogConfig, FileViewerDialogData, FileViewerFileType, OptionConfig, UrlConfig } from '../interfaces';
 import { TisPreviewImageComponent } from '../tis-preview-image/tis-preview-image.component';
-import { BehaviorSubject, Observable, map, shareReplay } from 'rxjs';
+import { BehaviorSubject, Observable, map, sequenceEqual, shareReplay } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
@@ -30,7 +30,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input({required: true}) urlConfig!: UrlConfig;
   @Input() entityType!: string;
   @Input() entityId: any;
-  @Input() viewType: 'card' | 'list' | 'single-card' = 'card';
+  @Input() viewType: 'card' | 'list' = 'card';
   @Input() type: 'image' | 'file' = 'image';
   @Input() label: string | null = null;
   @Input() disabled: boolean = false;
@@ -71,6 +71,7 @@ export class TisImageAndFileUploadAndViewComponent {
     colsForMobile: 3,
     height: '130px',
     selectorId: generateRandomString(10),
+    enableImageTags: false
   };
 
   isSliderLoaded = true;
@@ -147,9 +148,9 @@ export class TisImageAndFileUploadAndViewComponent {
     
     this.prepareConfig();
 
-    if(this.viewType == 'single-card'){
-      this.generateFilesForSingleCard();
-    }
+    // if(this.viewType == 'single-card'){
+    //   this.generateFilesForSingleCard();
+    // }
   }
 
   ngAfterViewInit() {
@@ -264,6 +265,10 @@ export class TisImageAndFileUploadAndViewComponent {
     if (this.options?.selectorId) {
       this.config.selectorId = this.options?.selectorId;
     }
+
+    if (this.options?.enableImageTags) {
+      this.config.enableImageTags = this.options?.enableImageTags;
+    }
   }
 
   setSliderLoading() {
@@ -302,7 +307,7 @@ export class TisImageAndFileUploadAndViewComponent {
     let uploadedImages: any[] = [];
 
     // Process all images concurrently and wait for completion
-    await Promise.all([...files].map(file => this.processImage(file, uploadedImages)));
+    await Promise.all([...files].map(file => this.processImage(file, uploadedImages, index)));
 
     if (this.config?.isStoredDb) {
       await this.uploadImages(uploadedImages);
@@ -314,7 +319,7 @@ export class TisImageAndFileUploadAndViewComponent {
     this.onSubmit(); // Call once after all uploads
   }
 
-  async processImage(file: File, uploadedImages: any[]) {
+  async processImage(file: File, uploadedImages: any[], index: number) {
     let fileSize = file.size / 1024;
     if (this.config?.fileSize && fileSize > this.config?.fileSize) {
       let maxSize = this.config.fileSize / 1024;
@@ -337,18 +342,34 @@ export class TisImageAndFileUploadAndViewComponent {
             title: file.name, name: file.name, s3Url: dataUrl,
             filename: file.name, s3Path: uploadData.uploadPath,
             tempS3Url: uploadData.resourceUrl, id: null,
-            uploadData: uploadData, loading: true
+            uploadData: uploadData, loading: true,
+            tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
-          this.filesArray = [currentImageData, ...this.filesArray];
+          if(index == -1){
+            this.filesArray = [currentImageData, ...this.filesArray];
+          }
+          else{
+            this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
+          }
+          
+          this.filesArray = this.filesArray.map((file: any, index: number) => {
+            return {...file, sequence: (index + 1)};
+          });
           this.setSliderLoading();
           uploadedImages.push(currentImageData);
 
           await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
 
           // Final processing
-          currentImageData.s3Url = currentImageData.tempS3Url;
-          currentImageData.loading = !this.config?.isStoredDb;
+          if(index == -1){
+            currentImageData.s3Url = currentImageData.tempS3Url;
+            currentImageData.loading = !this.config?.isStoredDb;
+          }
+          else{
+            this.filesArray[index].s3Url = currentImageData.tempS3Url;
+            this.filesArray[index].loading = !this.config?.isStoredDb;
+          }
           this.setSliderLoading();
 
           resolve();
@@ -380,9 +401,16 @@ export class TisImageAndFileUploadAndViewComponent {
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
+            ir?.data?.map((file: any) =>{
+              let selectedIndex = this.filesArray?.findIndex(f => f.s3Url == file.s3Url);
+              if(selectedIndex !== -1){
+                this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
+              }
+            });
+            this.onSubmit();
             resolve(ir);
           },
-          error: (imErr: any) => this.helper.showErrorMsg(imErr, "Error")
+          error: (imErr: any) => this.helper.showHttpErrorMsg(imErr)
         });
 
       } else {
@@ -485,7 +513,7 @@ export class TisImageAndFileUploadAndViewComponent {
     let uploadedFiles: any[] = [];
 
     // Process all files concurrently and wait for completion
-    await Promise.all([...files].map(file => this.processFile(file, uploadedFiles)));
+    await Promise.all([...files].map(file => this.processFile(file, uploadedFiles, index)));
 
     if (this.config?.isStoredDb) {
       await this.uploadFiles(uploadedFiles);
@@ -497,7 +525,7 @@ export class TisImageAndFileUploadAndViewComponent {
     this.onSubmit(); // Call once after all uploads
   }
 
-  async processFile(file: File, uploadedFiles: any[]) {
+  async processFile(file: File, uploadedFiles: any[], index: number) {
     let fileSize = file.size / 1024;
     if (this.config?.fileSize && fileSize > this.config?.fileSize) {
       let maxSize = this.config.fileSize / 1024;
@@ -518,18 +546,34 @@ export class TisImageAndFileUploadAndViewComponent {
           let currentFileData = {
             title: file.name, name: file.name, s3Url: uploadData.resourceUrl,
             s3Path: uploadData.uploadPath, filename: file.name, id: null,
-            uploadData: uploadData, loading: true, buffer: buffer
+            uploadData: uploadData, loading: true, buffer: buffer,
+            tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
-          this.filesArray = [currentFileData, ...this.filesArray];
+          if(index == -1){
+            this.filesArray = [currentFileData, ...this.filesArray];
+          }
+          else{
+            this.filesArray[index] = {...this.filesArray[index], ...currentFileData};
+          }
+
+          this.filesArray = this.filesArray.map((file: any, index: number) => {
+            return {...file, sequence: (index + 1)};
+          });
           this.setSliderLoading();
           uploadedFiles.push(currentFileData);
 
           await this.helper.putFile(uploadData.uploadURL, e.target.result).toPromise();
 
           // Final processing
-          currentFileData.s3Url = currentFileData.uploadData?.resourceUrl;
-          currentFileData.loading = !this.config?.isStoredDb;
+          if(index == -1){
+            currentFileData.s3Url = currentFileData.uploadData?.resourceUrl;
+            currentFileData.loading = !this.config?.isStoredDb;
+          }
+          else{
+            this.filesArray[index].s3Url = this.filesArray[index].uploadData?.resourceUrl;
+            this.filesArray[index].loading = !this.config?.isStoredDb;
+          }
           this.setSliderLoading();
 
           resolve();
@@ -556,13 +600,16 @@ export class TisImageAndFileUploadAndViewComponent {
           }
 
           return r;
-
         });
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
-            // this.filesArray = fa;
-            this.filesArray[0].loading = false;
+            ir?.data?.map((file: any) =>{
+              let selectedIndex = this.filesArray?.findIndex(f => f.s3Url == file.s3Url);
+              if(selectedIndex !== -1){
+                this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
+              }
+            });
             this.onSubmit();
             resolve(ir);
           },
@@ -642,6 +689,17 @@ export class TisImageAndFileUploadAndViewComponent {
       this.onSubmit();
     },
     (err: any) => { this.filesArray[index].loading = false; this.helper.showErrorMsg(err, "Error") })
+  }
+
+  onSubmitTags(file: any){
+    file.tags = file.tempTags;
+    file.isEditMode = false;
+    this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', file).subscribe({
+      next: (ir: any) => {
+        this.onSubmit();
+      },
+      error: (err: any) => this.helper.showHttpErrorMsg(err)
+    });
   }
 
   onSubmit() {
@@ -766,9 +824,17 @@ export class TisImageAndFileUploadAndViewComponent {
     if(this.filesArray?.length < this.config.limit){
       for (let index = 0; index < (this.config.limit - this.filesArray?.length); index++) {
         this.filesArray.push({
-          selectorId: generateRandomString(10)
+          selectorId: generateRandomString(10),
+          tags: null,
+          tempTags: null,
+          isEditMode: false
         });
       }
+    }
+    else{
+      this.filesArray = this.filesArray?.map((file: any) => {
+        return {...file, selectorId: generateRandomString(10), tempTag: null, isEditMode: false};
+      });
     }
   }
 }

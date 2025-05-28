@@ -116,8 +116,10 @@ export class AppComponent {
 
   urlConfig: UrlConfig = {
     getUploadUrl: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/get-upload-url',
-    // attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
-    attachToEntity: null,
+    attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
+    updateTag: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/update-tag',
+    // attachToEntity: null,
+    // updateTag: null,
     removeImage: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/remove-url',
   };
 

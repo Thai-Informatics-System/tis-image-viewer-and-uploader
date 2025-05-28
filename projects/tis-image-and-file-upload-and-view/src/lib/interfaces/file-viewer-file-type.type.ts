@@ -20,11 +20,13 @@ export interface OptionConfig {
     cols?: number;
     colsForTab?: number;
     colsForMobile?: number;
+    enableImageTags?: boolean;
 }
 
 export interface UrlConfig {
     getUploadUrl: string;
     attachToEntity: string | null;
+    updateTag: string | null;
     removeImage: string;
 }
 

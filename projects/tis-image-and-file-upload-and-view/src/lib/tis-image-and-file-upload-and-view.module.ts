@@ -15,6 +15,8 @@ import { TisExcelFileViewerComponent } from './tis-file-viewer/tis-excel-file-vi
 import { TisPdfViewerComponent } from './tis-file-viewer/tis-pdf-viewer/tis-pdf-viewer.component';
 import { TisVideoComponent } from './tis-file-viewer/tis-video/tis-video.component';
 import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
 
 const uiImports = [
@@ -22,6 +24,7 @@ const uiImports = [
   MatIconModule,
   MatSnackBarModule,
   MatProgressSpinnerModule,
+  MatInputModule,
   MatButtonModule,
   MatDialogModule,
 ];
@@ -41,6 +44,8 @@ const uiImports = [
   imports: [
     CommonModule,
     NgxExtendedPdfViewerModule,
+    FormsModule,
+    ReactiveFormsModule,
     ...uiImports
   ],
   exports: [
