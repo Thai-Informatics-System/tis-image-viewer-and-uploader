@@ -22,8 +22,8 @@
                         @if(config?.enableImageTags){
                             <div class="image-description">
                                 <div class="image-description-text" *ngIf="!file?.isEditMode">{{file?.tags || 'No Tags'}}</div>
-                                <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.isEditMode = true;" *ngIf="!file?.isEditMode">edit</span>
-                                <div class="image-description-edit" *ngIf="file?.isEditMode">
+                                <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.isEditMode = true;" *ngIf="!file?.isEditMode && !disabled">edit</span>
+                                <div class="image-description-edit" *ngIf="file?.isEditMode && !disabled">
                                     <textarea rows="2" [(ngModel)]="file.tempTags" placeholder="Enter tags here..."></textarea>
                                     <div class="description-actions">
                                         <button class="description-action-btn description-cancel-btn" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = false;">Cancel</button>
