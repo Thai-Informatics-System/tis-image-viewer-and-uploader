@@ -402,7 +402,7 @@ export class TisImageAndFileUploadAndViewComponent {
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
-              let selectedIndex = this.filesArray?.findIndex(f => f.s3Url == file.s3Url);
+              let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
               if(selectedIndex !== -1){
                 this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
               }
@@ -605,7 +605,7 @@ export class TisImageAndFileUploadAndViewComponent {
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
-              let selectedIndex = this.filesArray?.findIndex(f => f.s3Url == file.s3Url);
+              let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
               if(selectedIndex !== -1){
                 this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
               }
@@ -694,7 +694,7 @@ export class TisImageAndFileUploadAndViewComponent {
   onSubmitTags(file: any){
     file.tags = file.tempTags;
     file.isEditMode = false;
-    this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', file).subscribe({
+    this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', {id: file?.id || null, tag: file?.tags || null}).subscribe({
       next: (ir: any) => {
         this.onSubmit();
       },
