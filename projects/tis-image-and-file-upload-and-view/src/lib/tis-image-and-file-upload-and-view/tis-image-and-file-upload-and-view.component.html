@@ -7,7 +7,7 @@
             <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
                 @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
                     <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
-                    <div class="flex flex-col gap-3">
+                    <div class="flex flex-col">
                         <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
                             <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
                                 <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
