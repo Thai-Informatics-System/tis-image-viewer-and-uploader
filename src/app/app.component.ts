@@ -118,8 +118,10 @@ export class AppComponent {
     getUploadUrl: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/get-upload-url',
     attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
     updateTag: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/update-tag',
+    updateSequence: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/update-sequence',
     // attachToEntity: null,
     // updateTag: null,
+    // updateSequence: null
     removeImage: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/remove-url',
   };
 
@@ -170,5 +172,9 @@ export class AppComponent {
   onFileSelect(data: any){
     this.selectedId = data?.id;
     console.log("==== onFileSelect ====", data);
+  }
+
+  dataSequenceChange(data: any[]){
+    console.log("==== dataSequenceChange ====", data);
   }
 }

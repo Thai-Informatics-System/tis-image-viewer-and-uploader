@@ -1,6 +1,6 @@
 <div style="padding: 15px;">
     <h3 for="">Images with Card & Tags</h3>
-    <tis-image-and-file-upload-and-view type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" entityId="1" [entityType]="'image_details'" [disabled]="false"
+    <tis-image-and-file-upload-and-view [enableDragNDrop]="true" (dataSequenceChange)="dataSequenceChange($event)" type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" entityId="1" [entityType]="'image_details'" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view-for-card-tags', limit: 5, enableImageTags: true, isMultiple: true})"
         accept=".png,.jpeg,.jpg" label="Click to upload">
     </tis-image-and-file-upload-and-view>

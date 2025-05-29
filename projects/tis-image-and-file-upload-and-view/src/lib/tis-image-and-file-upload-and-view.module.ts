@@ -17,6 +17,7 @@ import { TisVideoComponent } from './tis-file-viewer/tis-video/tis-video.compone
 import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 
 const uiImports = [
@@ -46,7 +47,8 @@ const uiImports = [
     NgxExtendedPdfViewerModule,
     FormsModule,
     ReactiveFormsModule,
-    ...uiImports
+    ...uiImports,
+    DragDropModule
   ],
   exports: [
     TisImageAndFileUploadAndViewComponent

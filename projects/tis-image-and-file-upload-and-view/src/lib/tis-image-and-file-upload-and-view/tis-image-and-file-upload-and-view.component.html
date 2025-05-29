@@ -2,37 +2,78 @@
 <input type="file" size="60" *ngIf="config?.isMultiple" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" multiple style="display: none;" />
 <!-- <input type="file" name="file" id="file-picker" style="display: none;" *ngIf="(filesArray?.length < config?.limit) && !disabled" [style.height]="config?.labelHeight"> -->
 @if(viewType == 'card'){
-    <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}">
+    <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" [cdkDropListLockAxis]="'x'">
         @if(filesArray?.length){
             <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
                 @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
                     <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
-                    <div class="flex flex-col">
-                        <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
-                            <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
-                                <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
+                     @if(enableDragNDrop){
+                        <div class="flex flex-col">
+                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
+                                <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
+                                    <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
+                                </div>
+                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
                             </div>
-                            <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                        </div>
-                        <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
-                            <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                            <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
-                            <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
-                        </div>
-                        @if(config?.enableImageTags){
-                            <div class="image-description">
-                                <div class="image-description-text" *ngIf="!file?.isEditMode">{{file?.tags || 'No Tags'}}</div>
-                                <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.isEditMode = true;" *ngIf="!file?.isEditMode && !disabled">edit</span>
-                                <div class="image-description-edit" *ngIf="file?.isEditMode && !disabled">
-                                    <textarea rows="2" [(ngModel)]="file.tempTags" placeholder="Enter tags here..."></textarea>
-                                    <div class="description-actions">
-                                        <button class="description-action-btn description-cancel-btn" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = false;">Cancel</button>
-                                        <button class="description-action-btn description-save-btn" (click)="$event.stopPropagation(); onSubmitTags(file);">Save</button>
-                                    </div>
+                            <div cdkDrag>
+                                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading" cdkDragHandle>
+                                    <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                                    <!-- <span class="material-icons drag" cdkDragHandle>drag_indicator</span> -->
+                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
+                                    <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
                                 </div>
                             </div>
-                        }
-                    </div>
+                            @if(config?.enableImageTags){
+                                <div class="image-description">
+                                    <div class="image-description-text" *ngIf="!file?.isEditMode">
+                                        @if(file?.tags && file?.tags != ''){
+                                            <span class="anchor" *ngFor="let tag of getTagsArray(file?.tags)">{{tag}} </span>
+                                        }
+                                        @else {
+                                            <span>No Tags</span>
+                                        }
+                                    </div>
+                                    <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = true;" *ngIf="!file?.isEditMode && !disabled">edit</span>
+                                    <div class="image-description-edit" *ngIf="file?.isEditMode && !disabled">
+                                        <input [(ngModel)]="file.tempTags" placeholder="Enter tags here..." (keydown.enter)="onSubmitTags(file)" (keydown.space)="editTagWithSpace(file)" (keydown)="onKeydown($event, file)" />
+                                        <div class="description-actions">
+                                            <button class="description-action-btn description-cancel-btn" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = false;">Cancel</button>
+                                            <button class="description-action-btn description-save-btn" (click)="$event.stopPropagation(); onSubmitTags(file);">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @else {
+                        <div class="flex flex-col">
+                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
+                                <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
+                                    <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
+                                </div>
+                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                            </div>
+                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
+                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                                <!-- <span class="material-icons drag" cdkDragHandle>drag_indicator</span> -->
+                                <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
+                                <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
+                            </div>
+                            @if(config?.enableImageTags){
+                                <div class="image-description">
+                                    <div class="image-description-text" *ngIf="!file?.isEditMode">{{file?.tags || 'No Tags'}}</div>
+                                    <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.isEditMode = true;" *ngIf="!file?.isEditMode && !disabled">edit</span>
+                                    <div class="image-description-edit" *ngIf="file?.isEditMode && !disabled">
+                                        <input [(ngModel)]="file.tempTags" placeholder="Enter tags here..." (keydown.enter)="onSubmitTags(file)" (keydown.space)="editTagWithSpace(file)" (keydown)="onKeydown($event, file)" />
+                                        <div class="description-actions">
+                                            <button class="description-action-btn description-cancel-btn" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = false;">Cancel</button>
+                                            <button class="description-action-btn description-save-btn" (click)="$event.stopPropagation(); onSubmitTags(file);">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
                     @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
                         <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
                         <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" (click)="loading? null : openImageSelector()">

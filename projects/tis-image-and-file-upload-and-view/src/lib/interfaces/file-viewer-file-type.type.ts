@@ -27,6 +27,7 @@ export interface UrlConfig {
     getUploadUrl: string;
     attachToEntity: string | null;
     updateTag: string | null;
+    updateSequence: string | null;
     removeImage: string;
 }
 

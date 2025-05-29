@@ -8,6 +8,7 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
 import { Config } from '../interfaces/config.type';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 const generateRandomString = (length: number): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -50,6 +51,9 @@ export class TisImageAndFileUploadAndViewComponent {
   @Output() onUploaded = new EventEmitter();
   @Output() onFileSelect = new EventEmitter<any>();
   @Output() onFileRemoved = new EventEmitter<any>();
+
+  @Input() enableDragNDrop: boolean = false;
+  @Output() dataSequenceChange = new EventEmitter<any>();
 
   isMobile = false;
   isTab = false;
@@ -317,6 +321,7 @@ export class TisImageAndFileUploadAndViewComponent {
     this.uploadInProgress.emit(false);
 
     this.onSubmit(); // Call once after all uploads
+    this.updateSequence();
   }
 
   async processImage(file: File, uploadedImages: any[], index: number) {
@@ -342,7 +347,7 @@ export class TisImageAndFileUploadAndViewComponent {
             title: file.name, name: file.name, s3Url: dataUrl,
             filename: file.name, s3Path: uploadData.uploadPath,
             tempS3Url: uploadData.resourceUrl, id: null,
-            uploadData: uploadData, loading: true,
+            uploadData: uploadData, loading: false,
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
@@ -352,10 +357,6 @@ export class TisImageAndFileUploadAndViewComponent {
           else{
             this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
           }
-          
-          this.filesArray = this.filesArray.map((file: any, index: number) => {
-            return {...file, sequence: (index + 1)};
-          });
           this.setSliderLoading();
           uploadedImages.push(currentImageData);
 
@@ -523,6 +524,7 @@ export class TisImageAndFileUploadAndViewComponent {
     this.uploadInProgress.emit(false);
 
     this.onSubmit(); // Call once after all uploads
+    this.updateSequence();
   }
 
   async processFile(file: File, uploadedFiles: any[], index: number) {
@@ -556,10 +558,6 @@ export class TisImageAndFileUploadAndViewComponent {
           else{
             this.filesArray[index] = {...this.filesArray[index], ...currentFileData};
           }
-
-          this.filesArray = this.filesArray.map((file: any, index: number) => {
-            return {...file, sequence: (index + 1)};
-          });
           this.setSliderLoading();
           uploadedFiles.push(currentFileData);
 
@@ -691,17 +689,6 @@ export class TisImageAndFileUploadAndViewComponent {
     (err: any) => { this.filesArray[index].loading = false; this.helper.showErrorMsg(err, "Error") })
   }
 
-  onSubmitTags(file: any){
-    file.tags = file.tempTags;
-    file.isEditMode = false;
-    this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', {id: file?.id || null, tag: file?.tags || null}).subscribe({
-      next: (ir: any) => {
-        this.onSubmit();
-      },
-      error: (err: any) => this.helper.showHttpErrorMsg(err)
-    });
-  }
-
   onSubmit() {
     this.onUploaded.emit(this.filesArray);
   }
@@ -815,8 +802,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
   setHeight(id: string) {
     let height = document.getElementById(id)?.offsetWidth;
-    console.log("=== setHeight::height ===", id, height);
-    
+    // console.log("=== setHeight::height ===", id, height);
     return `${height}px`;
   }
 
@@ -836,5 +822,122 @@ export class TisImageAndFileUploadAndViewComponent {
         return {...file, selectorId: generateRandomString(10), tempTag: null, isEditMode: false};
       });
     }
+  }
+
+  editTagWithSpace(file: any){
+    console.log("=== editTagWithSpace :: file ===", file);
+    
+    let tempTag: any = file?.tempTags?.trim();
+    console.log("=== editTagWithSpace :: tempTag ===", tempTag);
+
+    if(tempTag && tempTag != ''){
+      let tempTagsArr: any[] = tempTag?.split(' ');
+      console.log("=== editTagWithSpace :: before tempTagsArr ===", tempTagsArr);
+
+      tempTagsArr = tempTagsArr?.filter(e => (e && e != ''))?.map(t =>{
+        if (t.includes('#')) {}
+        else{
+          t = `#${t}`;
+        }
+        return t;
+      });
+
+      tempTag = tempTagsArr.join(' ');
+      file.tempTags = `${tempTag}`;
+    }
+    else{
+      file.tempTags = tempTag
+    }
+  }
+
+  onKeydown(event: KeyboardEvent, file: any) {
+    if (event.key === ',' || event.keyCode === 188) {
+      event.preventDefault();
+      this.editTagWithComma(file);
+    }
+  }
+
+  editTagWithComma(file: any){
+    let tempTag: any = file?.tempTags?.trim();
+
+    if(tempTag && tempTag != ''){
+      let tempTagsArr: any[] = tempTag?.split(' ');
+      tempTagsArr = tempTagsArr?.filter(e => (e && e != ''))?.map(t =>{
+        if (t.includes('#')) {}
+        else{
+          t = `#${t}`;
+        }
+        return t;
+      });
+
+      tempTag = tempTagsArr.join(' ');
+      tempTag = tempTag.replace(/,/g, '');
+      file.tempTags = `${tempTag} `;
+    }
+    else{
+      file.tempTags = tempTag
+    }
+  }
+
+  onSubmitTags(file: any){
+    file.tags = file?.tempTags?.trim();
+    file.isEditMode = false;
+    this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', {id: file?.id || null, tag: file?.tags || null}).subscribe({
+      next: (ir: any) => {
+        this.onSubmit();
+      },
+      error: (err: any) => this.helper.showHttpErrorMsg(err)
+    });
+  }
+
+  drop(event: CdkDragDrop<any[]>) {
+    // Ignore if the item was dropped at the same index
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    // Access current data from apiSubject
+    const currentData = [...this.filesArray];
+
+    if (!currentData || currentData.length === 0) {
+      return;
+    }
+
+    // Rearrange items based on the drop event
+    moveItemInArray(currentData, event.previousIndex, event.currentIndex);
+
+    // Update the apiSubject with reordered data
+    this.filesArray = currentData;
+
+    this.updateSequence();
+  }
+
+  updateSequence(){
+    this.filesArray = this.filesArray.map((file: any, index: number) => {
+      return {...file, sequence: (index + 1)};
+    });
+
+    if(this.enableDragNDrop && this.urlConfig?.updateSequence){
+      let files: any[] = this.filesArray?.length ? JSON.parse(JSON.stringify(this.filesArray)) : [];
+      files = files?.map(f =>{
+        return {id: f?.id, sequence: f?.sequence || 1};
+      });
+      this.helper.updateSequence(this.urlConfig?.updateSequence || 'not-specified', {files}).subscribe({
+        next: (ir: any) => {
+          this.dataSequenceChange.emit(this.filesArray);
+        },
+        error: (err: any) => this.helper.showHttpErrorMsg(err)
+      });
+    }
+    else{
+      this.dataSequenceChange.emit(this.filesArray);
+    }
+  }
+
+  getTagsArray(tags: string){
+    let tempTag: any = tags?.trim();
+    let tempTagsArr: any[] = tempTag?.split(' ');
+
+    return tempTagsArr?.filter(e => e && e != '');
   }
 }
