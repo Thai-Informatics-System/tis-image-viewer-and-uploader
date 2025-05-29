@@ -884,6 +884,7 @@ export class TisImageAndFileUploadAndViewComponent {
     file.isEditMode = false;
     this.helper.updateTag(this.urlConfig?.updateTag || 'not-specified', {id: file?.id || null, tag: file?.tags || null}).subscribe({
       next: (ir: any) => {
+        this.helper.showSuccessMsg(ir.message, 'Success', 3000);
         this.onSubmit();
       },
       error: (err: any) => this.helper.showHttpErrorMsg(err)
@@ -924,6 +925,7 @@ export class TisImageAndFileUploadAndViewComponent {
       });
       this.helper.updateSequence(this.urlConfig?.updateSequence || 'not-specified', {files}).subscribe({
         next: (ir: any) => {
+          this.helper.showSuccessMsg(ir.message, 'Success', 3000);
           this.dataSequenceChange.emit(this.filesArray);
         },
         error: (err: any) => this.helper.showHttpErrorMsg(err)
