@@ -109,8 +109,8 @@ export class TisHelperService {
     return this.http.post(url, { filename, mimeType, type });
   }
 
-  attachFilesToEntity(url: string, data: any): Observable<any> {
-    return this.http.post(url, data);
+  attachFilesToEntity(url: string, data: any, limit: number): Observable<any> {
+    return this.http.post(`${url}?limit=${limit}`, data);
   }
 
   updateTag(url: string, data: any): Observable<any> {

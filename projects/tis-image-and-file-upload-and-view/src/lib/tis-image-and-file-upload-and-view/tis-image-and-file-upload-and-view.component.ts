@@ -45,6 +45,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input() previewInFlex: boolean = false;
   @Input() imageItemClass: string = '';
   @Input() isEnableDeleteConfirmation: boolean = true;
+  @Input() isAddUploadedFileInLastNode: boolean = false;
   @Input() deleteConfirmationMsg!: string;
   @Input() dialogConfig!: DialogConfig;
   @Output() uploadInProgress = new EventEmitter();
@@ -352,7 +353,12 @@ export class TisImageAndFileUploadAndViewComponent {
           };
 
           if(index == -1){
-            this.filesArray = [currentImageData, ...this.filesArray];
+            if(this.isAddUploadedFileInLastNode){
+              this.filesArray = [...this.filesArray, currentImageData];
+            }
+            else{
+              this.filesArray = [currentImageData, ...this.filesArray];
+            }
           }
           else{
             this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
@@ -400,7 +406,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
         });
 
-        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
               let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
@@ -553,7 +559,12 @@ export class TisImageAndFileUploadAndViewComponent {
           };
 
           if(index == -1){
-            this.filesArray = [currentFileData, ...this.filesArray];
+            if(this.isAddUploadedFileInLastNode){
+              this.filesArray = [...this.filesArray, currentFileData];
+            }
+            else{
+              this.filesArray = [currentFileData, ...this.filesArray];
+            }
           }
           else{
             this.filesArray[index] = {...this.filesArray[index], ...currentFileData};
@@ -600,7 +611,7 @@ export class TisImageAndFileUploadAndViewComponent {
           return r;
         });
 
-        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }).subscribe({
+        this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
               let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
@@ -910,10 +921,10 @@ export class TisImageAndFileUploadAndViewComponent {
     // Update the apiSubject with reordered data
     this.filesArray = currentData;
 
-    this.updateSequence();
+    this.updateSequence(true);
   }
 
-  updateSequence(){
+  updateSequence(isShowMessage: boolean = false){
     this.filesArray = this.filesArray.map((file: any, index: number) => {
       return {...file, sequence: (index + 1)};
     });
@@ -925,7 +936,12 @@ export class TisImageAndFileUploadAndViewComponent {
       });
       this.helper.updateSequence(this.urlConfig?.updateSequence || 'not-specified', {files}).subscribe({
         next: (ir: any) => {
-          this.helper.showSuccessMsg(ir.message, 'Success', 3000);
+          if(isShowMessage){
+            this.helper.showSuccessMsg(ir.message, 'Success', 3000);
+          }
+          else{
+            this.helper.showSuccessMsg(`${this.type == 'image' ? 'Image' : 'File'} has been uploaded successfully`, 'Success', 3000);
+          }
           this.dataSequenceChange.emit(this.filesArray);
         },
         error: (err: any) => this.helper.showHttpErrorMsg(err)
