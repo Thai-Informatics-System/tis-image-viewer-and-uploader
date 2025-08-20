@@ -25,7 +25,7 @@ export class TisHelperService {
     const httpError = error;
 
     if (httpError.status >= 400) {
-      const errorFromServer = httpError.error;
+      const errorFromServer = httpError.error?.errors || httpError.error || [];
       if (Array.isArray(errorFromServer) && errorFromServer.length > 0) {
         errorMessage = errorFromServer[0].message;
         errorCode = errorFromServer[0].code;
