@@ -52,6 +52,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Output() onUploaded = new EventEmitter();
   @Output() onFileSelect = new EventEmitter<any>();
   @Output() onFileRemoved = new EventEmitter<any>();
+  @Output() onError = new EventEmitter();
 
   @Input() enableDragNDrop: boolean = false;
   @Output() dataSequenceChange = new EventEmitter<any>();
@@ -417,7 +418,7 @@ export class TisImageAndFileUploadAndViewComponent {
             this.onSubmit();
             resolve(ir);
           },
-          error: (imErr: any) => this.helper.showHttpErrorMsg(imErr)
+          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); }
         });
 
       } else {
@@ -622,7 +623,7 @@ export class TisImageAndFileUploadAndViewComponent {
             this.onSubmit();
             resolve(ir);
           },
-          error: (imErr: any) => reject(imErr)
+          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); }
         });
       } else {
         resolve(false);
@@ -927,7 +928,7 @@ export class TisImageAndFileUploadAndViewComponent {
   updateSequence(isShowMessage: boolean = false){
     this.filesArray = this.filesArray.map((file: any, index: number) => {
       return {...file, sequence: (index + 1)};
-    });
+    }).filter(f => f?.id && f?.id != null && f?.id != '');
 
     if(this.enableDragNDrop && this.urlConfig?.updateSequence){
       let files: any[] = this.filesArray?.length ? JSON.parse(JSON.stringify(this.filesArray)) : [];
@@ -944,7 +945,7 @@ export class TisImageAndFileUploadAndViewComponent {
           }
           this.dataSequenceChange.emit(this.filesArray);
         },
-        error: (err: any) => this.helper.showHttpErrorMsg(err)
+        error: (err: any) => { this.helper.showHttpErrorMsg(err); this.onError.emit(true); }
       });
     }
     else{
