@@ -1,14 +1,17 @@
 <input type="file" size="60" *ngIf="!config?.isMultiple" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" style="display: none;" />
 <input type="file" size="60" *ngIf="config?.isMultiple" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" multiple style="display: none;" />
-<!-- <input type="file" name="file" id="file-picker" style="display: none;" *ngIf="(filesArray?.length < config?.limit) && !disabled" [style.height]="config?.labelHeight"> -->
 @if(viewType == 'card'){
-    <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" [cdkDropListLockAxis]="'x'">
+    <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" cdkDropListOrientation="horizontal">
         @if(filesArray?.length){
             <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
                 @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
-                    <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
-                     @if(enableDragNDrop){
+                    @if(enableDragNDrop){
                         <div class="flex flex-col">
+                            @if(isShowImageSequence){
+                                <div class="image-description" style="margin-bottom: 15px;">
+                                    <div class="image-description-text" style="text-align: center; font-weight: bold;">Image {{i + 1}}</div>
+                                </div>
+                            }
                             <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
                                 <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
                                     <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
@@ -18,7 +21,6 @@
                             <div cdkDrag>
                                 <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading" cdkDragHandle>
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                    <!-- <span class="material-icons drag" cdkDragHandle>drag_indicator</span> -->
                                     <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
                                     <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
                                 </div>
@@ -47,6 +49,11 @@
                     }
                     @else {
                         <div class="flex flex-col">
+                            @if(isShowImageSequence){
+                                <div class="image-description" style="margin-bottom: 15px;">
+                                    <div class="image-description-text" style="text-align: center; font-weight: bold;">Image {{i + 1}}</div>
+                                </div>
+                            }
                             <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
                                 <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
                                     <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
@@ -55,7 +62,6 @@
                             </div>
                             <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
                                 <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                <!-- <span class="material-icons drag" cdkDragHandle>drag_indicator</span> -->
                                 <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
                                 <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
                             </div>
@@ -75,9 +81,14 @@
                         </div>
                     }
                     @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
-                        <!-- style="height: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2); width: calc((var(--tis-image-picker-height) - 48px - 0.75rem) / 2);" -->
-                        <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" (click)="loading? null : openImageSelector()">
-                            <mat-icon class="active">upload_file</mat-icon>
+                        <div class="flex flex-col">
+                            @if(isShowImageSequence){
+                                <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
+                                </div>
+                            }
+                            <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" (click)="loading? null : openImageSelector()">
+                                <mat-icon class="active">upload_file</mat-icon>
+                            </div>
                         </div>
                     }
                 }
@@ -97,8 +108,6 @@
         }
         @else{
             <div class="not-found-section" style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; cursor: pointer;">
-                <!-- <img src="assets/tis-image-and-file-upload-and-view-assets/no-record-found.png" alt="data not found" style="margin: auto; height: calc(var(--tis-image-picker-height) - 30px); max-height: 150px;"> -->
-                
                 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Layer_1" x="0px" y="0px" width="100%" viewBox="0 0 512 512" enable-background="new 0 0 512 512" xml:space="preserve">
                     <path fill="none" opacity="1.000000" stroke="none" d=" M283.000000,513.000000   C188.689560,513.000000 94.879120,513.000000 1.034338,513.000000   C1.034338,342.397858 1.034338,171.795731 1.034338,1.096792   C171.560455,1.096792 342.121002,1.096792 512.840759,1.096792   C512.840759,171.666550 512.840759,342.333252 512.840759,513.000000   C436.462372,513.000000 359.981171,513.000000 283.000000,513.000000  M214.500000,497.000000   C271.998901,496.999969 329.497833,497.019897 386.996674,496.975769   C394.561920,496.969971 401.787231,494.626648 406.395233,488.770782   C412.026520,481.614502 416.644897,473.577057 421.072449,465.572754   C437.390259,436.072754 453.464813,406.438049 469.597321,376.835754   C478.327332,360.816742 487.426758,344.977722 495.530029,328.645905   C501.012421,317.596252 494.173737,304.613556 481.201294,304.861847   C456.377502,305.336975 431.538177,304.999878 406.705292,304.999847   C404.938568,304.999847 403.171844,304.999847 401.000031,304.999847   C401.000031,302.348328 401.003784,300.379181 400.999481,298.410065   C400.935120,269.085632 400.853577,239.761169 400.867645,210.436768   C400.868164,209.340317 401.642242,208.138214 402.315186,207.164581   C408.841400,197.722305 416.441071,188.858276 421.779449,178.792419   C433.290894,157.086823 435.985443,133.380402 431.740631,109.507538   C425.335449,73.484550 405.456726,46.387234 373.051300,29.163473   C356.219269,20.217096 338.040710,16.499708 318.773804,16.813351   C301.234619,17.098873 284.897461,21.133270 269.449402,28.965902   C256.098724,35.735111 244.580948,44.876842 234.887085,56.467457   C224.793365,68.536171 217.675415,82.055397 213.023590,96.957832   C209.186737,109.249481 208.654160,121.911049 208.964157,134.687836   C209.387650,152.143631 214.172058,168.302002 222.741714,183.427231   C224.412766,186.376572 225.987946,189.380234 227.939270,192.969376   C211.045273,192.969376 194.919281,193.199417 178.811310,192.763687   C175.805389,192.682358 172.083817,190.621887 170.038193,188.292847   C160.046188,176.916489 150.561493,165.096268 140.789429,153.524185   C136.493210,148.436600 131.117233,145.037399 124.221672,145.023544   C96.055626,144.966995 67.881424,145.387711 39.727192,144.808304   C28.532793,144.577896 16.775660,156.479080 16.809900,167.857864   C17.130381,274.354980 17.052288,380.853516 16.870073,487.351288   C16.859135,493.743988 19.582472,497.123566 26.503685,497.103851   C88.835381,496.926239 151.167801,497.000000 214.500000,497.000000  z"/>
                     <path fill="var(--tis-primary, #1F6AAD)" opacity="1.000000" stroke="none" d=" M214.000000,497.000000   C151.167801,497.000000 88.835381,496.926239 26.503685,497.103851   C19.582472,497.123566 16.859135,493.743988 16.870073,487.351288   C17.052288,380.853516 17.130381,274.354980 16.809900,167.857864   C16.775660,156.479080 28.532793,144.577896 39.727192,144.808304   C67.881424,145.387711 96.055626,144.966995 124.221672,145.023544   C131.117233,145.037399 136.493210,148.436600 140.789429,153.524185   C150.561493,165.096268 160.046188,176.916489 170.038193,188.292847   C172.083817,190.621887 175.805389,192.682358 178.811310,192.763687   C194.919281,193.199417 211.045273,192.969376 227.939270,192.969376   C225.987946,189.380234 224.412766,186.376572 222.741714,183.427231   C214.172058,168.302002 209.387650,152.143631 208.964157,134.687836   C208.654160,121.911049 209.186737,109.249481 213.023590,96.957832   C217.675415,82.055397 224.793365,68.536171 234.887085,56.467457   C244.580948,44.876842 256.098724,35.735111 269.449402,28.965902   C284.897461,21.133270 301.234619,17.098873 318.773804,16.813351   C338.040710,16.499708 356.219269,20.217096 373.051300,29.163473   C405.456726,46.387234 425.335449,73.484550 431.740631,109.507538   C435.985443,133.380402 433.290894,157.086823 421.779449,178.792419   C416.441071,188.858276 408.841400,197.722305 402.315186,207.164581   C401.642242,208.138214 400.868164,209.340317 400.867645,210.436768   C400.853577,239.761169 400.935120,269.085632 400.999481,298.410065   C401.003784,300.379181 401.000031,302.348328 401.000031,304.999847   C403.171844,304.999847 404.938568,304.999847 406.705292,304.999847   C431.538177,304.999878 456.377502,305.336975 481.201294,304.861847   C494.173737,304.613556 501.012421,317.596252 495.530029,328.645905   C487.426758,344.977722 478.327332,360.816742 469.597321,376.835754   C453.464813,406.438049 437.390259,436.072754 421.072449,465.572754   C416.644897,473.577057 412.026520,481.614502 406.395233,488.770782   C401.787231,494.626648 394.561920,496.969971 386.996674,496.975769   C329.497833,497.019897 271.998901,496.999969 214.000000,497.000000  M134.597260,321.000000   C127.620270,319.337616 123.942146,323.017517 121.500618,328.932983   C120.498009,331.362091 119.193306,333.673279 117.937233,335.989990   C103.522736,362.575897 89.117485,389.166901 74.653091,415.725647   C67.257729,429.304626 59.689438,442.789490 52.312668,456.378448   C47.974022,464.370728 43.857620,472.483643 39.401810,481.000000   C42.117859,481.000000 44.110912,481.000000 46.103966,481.000000   C144.765793,481.000000 243.427612,481.000031 342.089447,481.000000   C354.922150,481.000000 367.755981,481.100647 380.587189,480.961823   C388.353729,480.877808 394.963684,478.668121 399.028687,471.088623   C414.189636,442.819641 429.540070,414.652191 444.852783,386.464783   C452.465210,372.451935 460.203308,358.507233 467.780884,344.475739   C471.870789,336.902466 475.742279,329.211273 480.010315,321.000000   C364.545990,321.000000 250.059738,321.000000 134.597260,321.000000  M324.557129,242.085190   C327.301666,237.590393 329.664886,232.791306 332.924042,228.707169   C335.118561,225.957092 338.299622,222.950409 341.520416,222.240189   C357.159485,218.791580 371.110535,211.909912 382.881226,201.408112   C405.027954,181.648727 416.679504,157.025070 416.129883,126.765366   C415.719910,104.193253 408.285522,84.336838 393.808441,67.607040   C373.699219,44.368736 348.121246,32.686760 316.779572,33.851212   C294.904785,34.663937 275.751617,42.202290 259.624786,56.188839   C232.720886,79.522171 221.513794,109.436241 227.057266,144.851562   C232.965317,182.596176 262.283539,213.393021 299.806335,221.925400   C304.366974,222.962448 307.440796,225.236969 309.702332,229.227615   C313.147400,235.306534 316.865295,241.230835 320.988098,248.086838   C322.400177,245.685776 323.276184,244.196213 324.557129,242.085190  z"/>
@@ -134,7 +143,6 @@
                     <div style="display: flex; justify-content: center; align-items: center; gap: 4px;" style="width: 50px;" *ngIf="file?.loading">
                         <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="20"></mat-progress-spinner>
                     </div>
-                    <!-- <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!disabled && !config.hiddenDownloadBtn">download_for_offline</span> -->
                 </div>
                 @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
                     <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid black; border-radius: 5px; padding: 5px; height: 56px;" (click)="loading? null : openImageSelector()">
@@ -166,49 +174,3 @@
         }
     </div>
 }
-
-<!-- <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
-    @for(file of filesArray; track file.selectorId; let i = $index; let l = $last;){
-        <input type="file" size="60" id="{{file.selectorId}}" (change)="type == 'file'? detectFiles($event, i): detectImages($event, i)" accept="{{accept}}" style="display: none;" />
-        <div class="flex flex-col gap-3">
-            @if(file.s3Url){
-                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{file.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+file.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
-                    <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
-                        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
-                    </div>
-                    <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                </div>
-                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{file.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+file.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
-                    <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
-                    <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
-                </div>
-            }
-            @else {
-                <div class="image-item uploader" id="image-item-{{file.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+file.selectorId+'-'+i+'-'+i)" (click)="loading? null : openImageSelector(file.selectorId)">
-                    <div>
-                        <mat-icon class="active">upload_file</mat-icon>
-                        <p style="margin: 0px;">
-                            {{label}}
-                            @if(hint && hint != ''){
-                                <br>
-                                <small>{{hint}}</small>
-                            }
-                        </p>
-                    </div>
-                </div>
-            }
-            <div class="image-description">
-                <div class="image-description-text" *ngIf="!file?.isEditMode">{{file?.tags || 'No Tags'}}</div>
-                <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.isEditMode = true;" *ngIf="!file?.isEditMode">edit</span>
-                <div class="image-description-edit" *ngIf="file?.isEditMode">
-                    <textarea rows="2" [(ngModel)]="file.tempTags" placeholder="Enter tags here..."></textarea>
-                    <div class="description-actions">
-                        <button class="description-action-btn description-cancel-btn" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = false;">Cancel</button>
-                        <button class="description-action-btn description-save-btn" (click)="$event.stopPropagation(); file.tags = file.tempTags; file.isEditMode = false;">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div> -->

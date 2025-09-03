@@ -24,7 +24,7 @@
     <br><br>
 
     <h3 for="">Images with Card View</h3>
-    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="false"
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [enableDragNDrop]="true" (dataSequenceChange)="dataSequenceChange($event)" [urlConfig]="urlConfig" [entityType]="'image_details'" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view', selectionMode: true})" [selectedId]="selectedId"
         accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()" (onFileSelect)="onFileSelect($event)">
     </tis-image-and-file-upload-and-view>

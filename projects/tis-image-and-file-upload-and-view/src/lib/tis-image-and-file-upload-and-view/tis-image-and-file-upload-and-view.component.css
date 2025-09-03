@@ -1,3 +1,7 @@
+.cdk-drop-list-dragging {
+    border: 2px solid red !important;
+}
+
 .grid {
     display: grid;
 }

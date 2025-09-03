@@ -54,6 +54,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Output() onFileRemoved = new EventEmitter<any>();
   @Output() onError = new EventEmitter();
 
+  @Input() isShowImageSequence: boolean = false;
   @Input() enableDragNDrop: boolean = false;
   @Output() dataSequenceChange = new EventEmitter<any>();
 
@@ -296,7 +297,7 @@ export class TisImageAndFileUploadAndViewComponent {
       this.filesArray = []; // Reset array for a single image
     }
 
-    let files = event.target.files;
+    const files = event.target.files;
     if (!files) {
       this.helper.showErrorMsg('Please select an image', 'Error', 3000);
       return;
@@ -324,6 +325,10 @@ export class TisImageAndFileUploadAndViewComponent {
 
     this.onSubmit(); // Call once after all uploads
     this.updateSequence();
+
+    
+    // Reset the input value so the same file can be selected again
+    event.target.value = '';
   }
 
   async processImage(file: File, uploadedImages: any[], index: number) {
@@ -504,7 +509,7 @@ export class TisImageAndFileUploadAndViewComponent {
       this.filesArray = []; // Reset array for a single file
     }
 
-    let files = event.target.files;
+    const files = event.target.files;
     if (!files) {
       this.helper.showErrorMsg('Please select a file', 'Error', 3000);
       return;
@@ -532,6 +537,9 @@ export class TisImageAndFileUploadAndViewComponent {
 
     this.onSubmit(); // Call once after all uploads
     this.updateSequence();
+
+    // Reset the input value so the same file can be selected again
+    event.target.value = '';
   }
 
   async processFile(file: File, uploadedFiles: any[], index: number) {
