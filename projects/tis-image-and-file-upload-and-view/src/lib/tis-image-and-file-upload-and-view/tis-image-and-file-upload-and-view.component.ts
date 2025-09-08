@@ -38,6 +38,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input() data: any;
   @Input() hint: string | null = null;
   @Input() accept: string = '';
+  @Input() isValidateMimeType: boolean = true;
   @Input() selectedId: any = null;
   @Input() options: OptionConfig | null = null;
   @Input() required: boolean = false;
@@ -340,7 +341,7 @@ export class TisImageAndFileUploadAndViewComponent {
     }
 
     // Validate file types based on accept parameter
-    if (!this.validateFileTypes(files)) {
+    if (this.isValidateMimeType && !this.validateFileTypes(files)) {
       return;
     }
 
@@ -557,7 +558,7 @@ export class TisImageAndFileUploadAndViewComponent {
     }
 
     // Validate file types based on accept parameter
-    if (!this.validateFileTypes(files)) {
+    if (this.isValidateMimeType && !this.validateFileTypes(files)) {
       return;
     }
 
