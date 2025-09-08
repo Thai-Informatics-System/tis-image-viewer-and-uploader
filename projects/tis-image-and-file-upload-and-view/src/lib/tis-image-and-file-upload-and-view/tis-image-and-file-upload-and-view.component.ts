@@ -278,6 +278,42 @@ export class TisImageAndFileUploadAndViewComponent {
     }
   }
 
+  /**
+   * Validates selected files against the accept parameter
+   * @param files - FileList of selected files
+   * @returns boolean - true if all files are valid, false otherwise
+   */
+  private validateFileTypes(files: FileList): boolean {
+    if (!this.accept || this.accept.trim() === '') {
+      return true; // No validation needed if accept is not specified
+    }
+
+    const acceptedTypes = this.accept.split(',').map(type => type.trim().toLowerCase());
+    const invalidFiles: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (!acceptedTypes.includes(fileExtension)) {
+        invalidFiles.push(file.name);
+      }
+    }
+    
+    if (invalidFiles.length > 0) {
+      const acceptedTypesStr = acceptedTypes.join(', ');
+      const invalidFilesStr = invalidFiles.join(', ');
+      this.helper.showErrorMsg(
+        `Invalid file type(s): ${invalidFilesStr}. Only ${acceptedTypesStr} files are allowed.`, 
+        'Error', 
+        5000
+      );
+      return false;
+    }
+    
+    return true;
+  }
+
   setSliderLoading() {
     this.isSliderLoaded = false;
     setTimeout(() => {
@@ -300,6 +336,11 @@ export class TisImageAndFileUploadAndViewComponent {
     const files = event.target.files;
     if (!files) {
       this.helper.showErrorMsg('Please select an image', 'Error', 3000);
+      return;
+    }
+
+    // Validate file types based on accept parameter
+    if (!this.validateFileTypes(files)) {
       return;
     }
 
@@ -512,6 +553,11 @@ export class TisImageAndFileUploadAndViewComponent {
     const files = event.target.files;
     if (!files) {
       this.helper.showErrorMsg('Please select a file', 'Error', 3000);
+      return;
+    }
+
+    // Validate file types based on accept parameter
+    if (!this.validateFileTypes(files)) {
       return;
     }
 
