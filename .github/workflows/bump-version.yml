@@ -1,15 +1,19 @@
-name: Bump Version and Tag
+name: Bump Version, Tag and Publish
 
 on:
   push:
     branches: [master]
+  workflow_dispatch:  # Allow manual triggering
 
 permissions:
   contents: write  # For committing and pushing tags
+  packages: write  # For publishing to npm
 
 jobs:
-  bump:
+  bump-and-publish:
     runs-on: ubuntu-latest
+    env:
+      LIB_NAME: tis-image-and-file-upload-and-view
 
     steps:
       - name: Checkout code
@@ -22,6 +26,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
 
       - name: Install dependencies
         run: npm ci --force
@@ -49,3 +54,11 @@ jobs:
             git tag "$TAG"
             git push origin "$TAG"
           fi
+
+      - name: Build library
+        run: npm run build ${{ env.LIB_NAME }}
+
+      - name: Publish to npm
+        run: npm publish ./dist/${{ env.LIB_NAME }} --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
