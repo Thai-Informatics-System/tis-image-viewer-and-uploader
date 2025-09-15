@@ -12,17 +12,16 @@
                                     <div class="image-description-text" style="text-align: center; font-weight: bold;">Image {{i + 1}}</div>
                                 </div>
                             }
-                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
-                                <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
-                                    <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
-                                </div>
-                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                            </div>
                             <div cdkDrag>
-                                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading" cdkDragHandle>
+                                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" cdkDragHandle>
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
-                                    <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
+                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
+                                    <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
+                                    
+                                    <!-- Loading overlay -->
+                                    <div class="loading-img" *ngIf="file?.loading">
+                                        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
+                                    </div>
                                 </div>
                             </div>
                             @if(config?.enableImageTags){
@@ -54,16 +53,15 @@
                                     <div class="image-description-text" style="text-align: center; font-weight: bold;">Image {{i + 1}}</div>
                                 </div>
                             }
-                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" *ngIf="file?.loading">
-                                <div class="shedded" style="width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; display: flex; justify-content: center; align-items: center;">
+                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)">
+                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
+                                <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
+                                <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
+                                
+                                <!-- Loading overlay -->
+                                <div class="loading-img" *ngIf="file?.loading">
                                     <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="30"></mat-progress-spinner>
                                 </div>
-                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                            </div>
-                            <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" *ngIf="!file?.loading">
-                                <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">highlight_off</span>
-                                <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn">download_for_offline</span>
                             </div>
                             @if(config?.enableImageTags){
                                 <div class="image-description">
@@ -140,8 +138,10 @@
                             <mat-icon>delete</mat-icon>
                         </button>
                     </div>
-                    <div style="display: flex; justify-content: center; align-items: center; gap: 4px;" style="width: 50px;" *ngIf="file?.loading">
-                        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="20"></mat-progress-spinner>
+                    
+                    <!-- Loading overlay for list view -->
+                    <div class="loading-img" *ngIf="file?.loading" style="border-radius: 5px;">
+                        <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="25"></mat-progress-spinner>
                     </div>
                 </div>
                 @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){

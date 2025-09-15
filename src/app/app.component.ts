@@ -114,15 +114,15 @@ export class AppComponent {
     }
   ];
 
+  // baseUrl = 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new';
+  baseUrl = 'http://localhost:3000/dev/image';
+
   urlConfig: UrlConfig = {
-    getUploadUrl: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/get-upload-url',
-    attachToEntity: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/attach-to-entity',
-    updateTag: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/update-tag',
-    updateSequence: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/update-sequence',
-    // attachToEntity: null,
-    // updateTag: null,
-    // updateSequence: null
-    removeImage: 'https://zoaca0s0ub.execute-api.ap-southeast-1.amazonaws.com/stage/image-new/remove-url',
+    getUploadUrl: `${this.baseUrl}/get-upload-url`,
+    attachToEntity: `${this.baseUrl}/attach-to-entity`,
+    updateTag: `${this.baseUrl}/update-tag`,
+    updateSequence: `${this.baseUrl}/update-sequence`,
+    removeImage: `${this.baseUrl}/remove-url`,
   };
 
   optionConfig: OptionConfig = {

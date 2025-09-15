@@ -396,7 +396,7 @@ export class TisImageAndFileUploadAndViewComponent {
             title: file.name, name: file.name, s3Url: dataUrl,
             filename: file.name, s3Path: uploadData.uploadPath,
             tempS3Url: uploadData.resourceUrl, id: null,
-            uploadData: uploadData, loading: false,
+            uploadData: uploadData, loading: true,  // Set loading to true initially
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
@@ -416,19 +416,28 @@ export class TisImageAndFileUploadAndViewComponent {
 
           await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
 
-          // Final processing
+          // Final processing - set loading to false after successful upload
           if(index == -1){
-            currentImageData.s3Url = currentImageData.tempS3Url;
-            currentImageData.loading = !this.config?.isStoredDb;
+            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
+            this.filesArray[currentIndex].s3Url = currentImageData.tempS3Url;
+            this.filesArray[currentIndex].loading = false;  // Set loading to false after upload
           }
           else{
             this.filesArray[index].s3Url = currentImageData.tempS3Url;
-            this.filesArray[index].loading = !this.config?.isStoredDb;
+            this.filesArray[index].loading = false;  // Set loading to false after upload
           }
           this.setSliderLoading();
 
           resolve();
         } catch (error: any) {
+          // Set loading to false on error as well
+          if(index == -1){
+            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
+            this.filesArray[currentIndex].loading = false;
+          }
+          else{
+            this.filesArray[index].loading = false;
+          }
           this.helper.showHttpErrorMsg(error);
           resolve();
         }
@@ -610,7 +619,7 @@ export class TisImageAndFileUploadAndViewComponent {
           let currentFileData = {
             title: file.name, name: file.name, s3Url: uploadData.resourceUrl,
             s3Path: uploadData.uploadPath, filename: file.name, id: null,
-            uploadData: uploadData, loading: true, buffer: buffer,
+            uploadData: uploadData, loading: true, buffer: buffer,  // Set loading to true initially
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
@@ -630,19 +639,28 @@ export class TisImageAndFileUploadAndViewComponent {
 
           await this.helper.putFile(uploadData.uploadURL, e.target.result).toPromise();
 
-          // Final processing
+          // Final processing - set loading to false after successful upload
           if(index == -1){
-            currentFileData.s3Url = currentFileData.uploadData?.resourceUrl;
-            currentFileData.loading = !this.config?.isStoredDb;
+            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
+            this.filesArray[currentIndex].s3Url = currentFileData.uploadData?.resourceUrl;
+            this.filesArray[currentIndex].loading = false;  // Set loading to false after upload
           }
           else{
             this.filesArray[index].s3Url = this.filesArray[index].uploadData?.resourceUrl;
-            this.filesArray[index].loading = !this.config?.isStoredDb;
+            this.filesArray[index].loading = false;  // Set loading to false after upload
           }
           this.setSliderLoading();
 
           resolve();
         } catch (error: any) {
+          // Set loading to false on error as well
+          if(index == -1){
+            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
+            this.filesArray[currentIndex].loading = false;
+          }
+          else{
+            this.filesArray[index].loading = false;
+          }
           this.helper.showHttpErrorMsg(error);
           resolve();
         }
