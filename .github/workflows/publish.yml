@@ -5,10 +5,16 @@ on:
     tags:
       - 'v*.*.*'  # Triggers on version tags like v1.0.0
 
+permissions:
+  contents: read
+  packages: write  # For publishing to npm
+
 jobs:
   publish:
     name: Publish Library
     runs-on: ubuntu-latest
+    env:
+      LIB_NAME: tis-image-and-file-upload-and-view
 
     steps:
       - name: Checkout code
@@ -24,9 +30,9 @@ jobs:
         run: npm ci --force
 
       - name: Build library
-        run: npm run build tis-image-and-file-upload-and-view
+        run: npm run build ${{ env.LIB_NAME }}
 
       - name: Publish to npm
-        run: npm publish ./dist/tis-image-and-file-upload-and-view --access public
+        run: npm publish ./dist/${{ env.LIB_NAME }} --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
