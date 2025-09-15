@@ -1,6 +1,6 @@
 {
   "name": "tis-ng-image-and-file-upload-and-view",
-  "version": "0.0.1",
+  "version": "1.2.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
