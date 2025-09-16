@@ -779,19 +779,63 @@ export class TisImageAndFileUploadAndViewComponent {
   }
 
   async downloadFile(url: string, fileName: string) {
-    fetch(url)
-      .then(response => response.blob())
-      .then(blob => {
-        const blobUrl = URL.createObjectURL(blob);
+    try {
+      // First try with fetch
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      
+      // Check if blob has content
+      if (blob.size === 0) {
+        throw new Error('File is empty or could not be fetched');
+      }
+
+      // Create download link
+      const blobUrl = URL.createObjectURL(blob);
+      const el = document.createElement("a");
+      el.href = blobUrl;
+      el.download = fileName;
+      el.style.display = 'none';
+      
+      // Add to DOM, click, and remove
+      document.body.appendChild(el);
+      el.click();
+      document.body.removeChild(el);
+      
+      // Cleanup blob URL
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+
+    } catch (error) {
+      console.error("Fetch download failed, trying alternative method:", error);
+      
+      // Fallback: Try direct link opening
+      try {
         const el = document.createElement("a");
-        el.href = blobUrl;
+        el.href = url;
         el.download = fileName;
+        el.target = '_blank';
+        el.style.display = 'none';
+        
         document.body.appendChild(el);
         el.click();
         document.body.removeChild(el);
-        URL.revokeObjectURL(blobUrl); // Cleanup
-      })
-      .catch(error => console.error("Download failed", error));
+        
+      } catch (fallbackError) {
+        console.error("All download methods failed:", fallbackError);
+        this.helper.showErrorMsg("Failed to download file. Please try again or contact support.", 'Error', 5000);
+      }
+    }
   }
 
   clickTimeout: any = null;
