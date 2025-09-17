@@ -1,6 +1,6 @@
 {
   "name": "@servicemind.tis/tis-image-and-file-upload-and-view",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "peerDependencies": {
     "@angular/common": "^19.2.0",
     "@angular/core": "^19.2.0",
