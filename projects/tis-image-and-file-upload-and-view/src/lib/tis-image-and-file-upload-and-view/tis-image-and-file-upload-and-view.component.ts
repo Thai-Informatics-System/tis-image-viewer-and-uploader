@@ -390,12 +390,15 @@ export class TisImageAndFileUploadAndViewComponent {
         try {
           let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
           let uploadData = uploadResponse.data.uploadUrlData;
+          
+          // For initial display, use a data URL for preview but ensure S3 URL is used for database
           let dataUrl = await this.helper.getDataUrlFromFile(file);
 
           let currentImageData = {
-            title: file.name, name: file.name, s3Url: dataUrl,
+            title: file.name, name: file.name, s3Url: dataUrl, // Temporary preview URL
             filename: file.name, s3Path: uploadData.uploadPath,
-            tempS3Url: uploadData.resourceUrl, id: null,
+            tempS3Url: uploadData.resourceUrl, // This will be the final S3 URL
+            id: null,
             uploadData: uploadData, loading: true,  // Set loading to true initially
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
@@ -414,17 +417,22 @@ export class TisImageAndFileUploadAndViewComponent {
           this.setSliderLoading();
           uploadedImages.push(currentImageData);
 
+          // Upload to S3
           await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
 
-          // Final processing - set loading to false after successful upload
+          // After successful upload, update with S3 URL and mark as completed
           if(index == -1){
             const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].s3Url = currentImageData.tempS3Url;
-            this.filesArray[currentIndex].loading = false;  // Set loading to false after upload
+            this.filesArray[currentIndex].s3Url = uploadData.resourceUrl; // Use S3 URL
+            this.filesArray[currentIndex].loading = false;
+            // Ensure uploadData contains the correct S3 URL for database storage
+            this.filesArray[currentIndex].uploadData.resourceUrl = uploadData.resourceUrl;
           }
           else{
-            this.filesArray[index].s3Url = currentImageData.tempS3Url;
-            this.filesArray[index].loading = false;  // Set loading to false after upload
+            this.filesArray[index].s3Url = uploadData.resourceUrl; // Use S3 URL
+            this.filesArray[index].loading = false;
+            // Ensure uploadData contains the correct S3 URL for database storage
+            this.filesArray[index].uploadData.resourceUrl = uploadData.resourceUrl;
           }
           this.setSliderLoading();
 
@@ -455,26 +463,36 @@ export class TisImageAndFileUploadAndViewComponent {
         let images: any[] = [];
         let fa = data.map((r: any) => {
           if (r?.uploadData) {
-            images.push({ fileName: r.uploadData?.fileName, resourceUrl: r.uploadData?.resourceUrl, uploadPath: r.uploadData?.uploadPath, uploadURL: r.uploadData?.uploadURL });
-            // delete r.uploadData;
+            // Ensure we're using the S3 URL, not base64 data
+            const s3Url = r.uploadData.resourceUrl;
+            images.push({ 
+              fileName: r.uploadData?.fileName, 
+              resourceUrl: s3Url, // This ensures S3 URL is stored in database
+              uploadPath: r.uploadData?.uploadPath, 
+              uploadURL: r.uploadData?.uploadURL 
+            });
           }
-
           return r;
-
         });
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
+              // Match by S3 URL to update the correct file
               let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
               if(selectedIndex !== -1){
-                this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
+                this.filesArray[selectedIndex] = {
+                  ...this.filesArray[selectedIndex], 
+                  loading: false, 
+                  id: file?.id || null,
+                  s3Url: file.s3Url // Ensure we're using the S3 URL from the response
+                }
               }
             });
             this.onSubmit();
             resolve(ir);
           },
-          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); }
+          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); resolve(false); }
         });
 
       } else {
@@ -617,7 +635,7 @@ export class TisImageAndFileUploadAndViewComponent {
           let uploadData = uploadResponse.data.uploadUrlData;
 
           let currentFileData = {
-            title: file.name, name: file.name, s3Url: uploadData.resourceUrl,
+            title: file.name, name: file.name, s3Url: uploadData.resourceUrl, // Use S3 URL
             s3Path: uploadData.uploadPath, filename: file.name, id: null,
             uploadData: uploadData, loading: true, buffer: buffer,  // Set loading to true initially
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
@@ -637,17 +655,22 @@ export class TisImageAndFileUploadAndViewComponent {
           this.setSliderLoading();
           uploadedFiles.push(currentFileData);
 
+          // Upload to S3
           await this.helper.putFile(uploadData.uploadURL, e.target.result).toPromise();
 
-          // Final processing - set loading to false after successful upload
+          // After successful upload, ensure S3 URL is used and mark as completed
           if(index == -1){
             const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].s3Url = currentFileData.uploadData?.resourceUrl;
-            this.filesArray[currentIndex].loading = false;  // Set loading to false after upload
+            this.filesArray[currentIndex].s3Url = uploadData.resourceUrl; // Ensure S3 URL
+            this.filesArray[currentIndex].loading = false;
+            // Ensure uploadData contains the correct S3 URL for database storage
+            this.filesArray[currentIndex].uploadData.resourceUrl = uploadData.resourceUrl;
           }
           else{
-            this.filesArray[index].s3Url = this.filesArray[index].uploadData?.resourceUrl;
-            this.filesArray[index].loading = false;  // Set loading to false after upload
+            this.filesArray[index].s3Url = uploadData.resourceUrl; // Ensure S3 URL
+            this.filesArray[index].loading = false;
+            // Ensure uploadData contains the correct S3 URL for database storage
+            this.filesArray[index].uploadData.resourceUrl = uploadData.resourceUrl;
           }
           this.setSliderLoading();
 
@@ -678,25 +701,36 @@ export class TisImageAndFileUploadAndViewComponent {
         let files: any[] = [];
         let fa = data.map((r: any) => {
           if (r?.uploadData) {
-            files.push({ fileName: r.uploadData?.fileName, resourceUrl: r.uploadData?.resourceUrl, uploadPath: r.uploadData?.uploadPath, uploadURL: r.uploadData?.uploadURL });
-            // delete r.uploadData;
+            // Ensure we're using the S3 URL, not any local file data
+            const s3Url = r.uploadData.resourceUrl;
+            files.push({ 
+              fileName: r.uploadData?.fileName, 
+              resourceUrl: s3Url, // This ensures S3 URL is stored in database
+              uploadPath: r.uploadData?.uploadPath, 
+              uploadURL: r.uploadData?.uploadURL 
+            });
           }
-
           return r;
         });
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
             ir?.data?.map((file: any) =>{
+              // Match by S3 URL to update the correct file
               let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
               if(selectedIndex !== -1){
-                this.filesArray[selectedIndex] = {...this.filesArray[selectedIndex], loading: false, id: file?.id || null}
+                this.filesArray[selectedIndex] = {
+                  ...this.filesArray[selectedIndex], 
+                  loading: false, 
+                  id: file?.id || null,
+                  s3Url: file.s3Url // Ensure we're using the S3 URL from the response
+                }
               }
             });
             this.onSubmit();
             resolve(ir);
           },
-          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); }
+          error: (imErr: any) => { this.helper.showHttpErrorMsg(imErr); this.onError.emit(true); resolve(false); }
         });
       } else {
         resolve(false);
