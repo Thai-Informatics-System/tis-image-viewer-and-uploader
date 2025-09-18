@@ -1,11 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, UrlConfig } from 'tis-image-and-file-upload-and-view';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, CommonModule, TisImageAndFileUploadAndViewModule],
+  imports: [ CommonModule, TisImageAndFileUploadAndViewModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
