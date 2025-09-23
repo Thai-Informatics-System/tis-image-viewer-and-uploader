@@ -809,6 +809,7 @@ export class TisImageAndFileUploadAndViewComponent {
   }
 
   onSubmit() {
+    this.filesArray = this.filesArray?.map((r, i) => { r.s3Url = r.uploadData.resourceUrl; return r; });
     this.onUploaded.emit(this.filesArray);
   }
 
