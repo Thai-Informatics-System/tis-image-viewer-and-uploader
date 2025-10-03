@@ -1078,27 +1078,36 @@ export class TisImageAndFileUploadAndViewComponent {
   }
 
   updateSequence(isShowMessage: boolean = false){
+    // Update sequence for all files (including those without id yet)
     this.filesArray = this.filesArray.map((file: any, index: number) => {
       return {...file, sequence: (index + 1)};
-    }).filter(f => f?.id && f?.id != null && f?.id != '');
+    });
 
     if(this.enableDragNDrop && this.urlConfig?.updateSequence){
-      let files: any[] = this.filesArray?.length ? JSON.parse(JSON.stringify(this.filesArray)) : [];
+      // Only send files with id to the server for sequence update
+      let filesWithId: any[] = this.filesArray.filter(f => f?.id && f?.id != null && f?.id != '');
+      let files: any[] = filesWithId?.length ? JSON.parse(JSON.stringify(filesWithId)) : [];
       files = files?.map(f =>{
         return {id: f?.id, sequence: f?.sequence || 1};
       });
-      this.helper.updateSequence(this.urlConfig?.updateSequence || 'not-specified', {files}).subscribe({
-        next: (ir: any) => {
-          if(isShowMessage){
-            this.helper.showSuccessMsg(ir.message, 'Success', 3000);
-          }
-          else{
-            this.helper.showSuccessMsg(`${this.type == 'image' ? 'Image' : 'File'} has been uploaded successfully`, 'Success', 3000);
-          }
-          this.dataSequenceChange.emit(this.filesArray);
-        },
-        error: (err: any) => { this.helper.showHttpErrorMsg(err); this.onError.emit(true); }
-      });
+      
+      if(files.length > 0) {
+        this.helper.updateSequence(this.urlConfig?.updateSequence || 'not-specified', {files}).subscribe({
+          next: (ir: any) => {
+            if(isShowMessage){
+              this.helper.showSuccessMsg(ir.message, 'Success', 3000);
+            }
+            else{
+              this.helper.showSuccessMsg(`${this.type == 'image' ? 'Image' : 'File'} has been uploaded successfully`, 'Success', 3000);
+            }
+            this.dataSequenceChange.emit(this.filesArray);
+          },
+          error: (err: any) => { this.helper.showHttpErrorMsg(err); this.onError.emit(true); }
+        });
+      } else {
+        // If no files with id yet, just emit the current array
+        this.dataSequenceChange.emit(this.filesArray);
+      }
     }
     else{
       this.dataSequenceChange.emit(this.filesArray);
