@@ -355,8 +355,31 @@ export class TisImageAndFileUploadAndViewComponent {
 
     let uploadedImages: any[] = [];
 
-    // Process all images concurrently and wait for completion
-    await Promise.all([...files].map(file => this.processImage(file, uploadedImages, index)));
+    // Pre-allocate slots in filesArray to avoid race conditions
+    const startIndex = this.filesArray.length;
+    const placeholders = [...files].map((file, idx) => ({
+      tempId: `temp-${Date.now()}-${idx}`,
+      title: file.name,
+      name: file.name,
+      loading: true,
+      filename: file.name,
+      s3Url: '', // Will be filled during processing
+      sequence: this.isAddUploadedFileInLastNode ? startIndex + idx + 1 : this.filesArray.length + 1 - idx
+    }));
+
+    // Add all placeholders at once to prevent race conditions
+    if (this.isAddUploadedFileInLastNode) {
+      this.filesArray = [...this.filesArray, ...placeholders];
+    } else {
+      this.filesArray = [...placeholders.reverse(), ...this.filesArray];
+    }
+    this.setSliderLoading();
+
+    // Process all images concurrently with their pre-assigned indices
+    await Promise.all([...files].map((file, idx) => {
+      const targetIndex = this.isAddUploadedFileInLastNode ? startIndex + idx : idx;
+      return this.processImage(file, uploadedImages, targetIndex, placeholders[this.isAddUploadedFileInLastNode ? idx : files.length - 1 - idx].tempId);
+    }));
 
     if (this.config?.isStoredDb) {
       await this.uploadImages(uploadedImages);
@@ -373,7 +396,7 @@ export class TisImageAndFileUploadAndViewComponent {
     event.target.value = '';
   }
 
-  async processImage(file: File, uploadedImages: any[], index: number) {
+  async processImage(file: File, uploadedImages: any[], index: number, tempId?: string) {
     let fileSize = file.size / 1024;
     if (this.config?.fileSize && fileSize > this.config?.fileSize) {
       let maxSize = this.config.fileSize / 1024;
@@ -395,6 +418,7 @@ export class TisImageAndFileUploadAndViewComponent {
           let dataUrl = await this.helper.getDataUrlFromFile(file);
 
           let currentImageData = {
+            tempId: tempId || `temp-${Date.now()}`,
             title: file.name, name: file.name, s3Url: dataUrl, // Temporary preview URL
             filename: file.name, s3Path: uploadData.uploadPath,
             tempS3Url: uploadData.resourceUrl, // This will be the final S3 URL
@@ -403,17 +427,11 @@ export class TisImageAndFileUploadAndViewComponent {
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
-          if(index == -1){
-            if(this.isAddUploadedFileInLastNode){
-              this.filesArray = [...this.filesArray, currentImageData];
-            }
-            else{
-              this.filesArray = [currentImageData, ...this.filesArray];
-            }
-          }
-          else{
+          // Update the file at the pre-assigned index
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
           }
+          
           this.setSliderLoading();
           uploadedImages.push(currentImageData);
 
@@ -421,14 +439,7 @@ export class TisImageAndFileUploadAndViewComponent {
           await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
 
           // After successful upload, update with S3 URL and mark as completed
-          if(index == -1){
-            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].s3Url = uploadData.resourceUrl; // Use S3 URL
-            this.filesArray[currentIndex].loading = false;
-            // Ensure uploadData contains the correct S3 URL for database storage
-            this.filesArray[currentIndex].uploadData.resourceUrl = uploadData.resourceUrl;
-          }
-          else{
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index].s3Url = uploadData.resourceUrl; // Use S3 URL
             this.filesArray[index].loading = false;
             // Ensure uploadData contains the correct S3 URL for database storage
@@ -439,11 +450,7 @@ export class TisImageAndFileUploadAndViewComponent {
           resolve();
         } catch (error: any) {
           // Set loading to false on error as well
-          if(index == -1){
-            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].loading = false;
-          }
-          else{
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index].loading = false;
           }
           this.helper.showHttpErrorMsg(error);
@@ -460,16 +467,24 @@ export class TisImageAndFileUploadAndViewComponent {
       if (data && data?.length > 0) {
         console.log('There is a image pending to attach:', data);
 
+        // Keep track of tempIds for matching after API response
+        let tempIdMapping: any[] = [];
         let images: any[] = [];
         let fa = data.map((r: any) => {
           if (r?.uploadData) {
             // Ensure we're using the S3 URL, not base64 data
             const s3Url = r.uploadData.resourceUrl;
+            // Store tempId separately for matching, don't send it to API
+            tempIdMapping.push({
+              tempId: r.tempId,
+              resourceUrl: s3Url
+            });
             images.push({ 
               fileName: r.uploadData?.fileName, 
               resourceUrl: s3Url, // This ensures S3 URL is stored in database
               uploadPath: r.uploadData?.uploadPath, 
-              uploadURL: r.uploadData?.uploadURL 
+              uploadURL: r.uploadData?.uploadURL
+              // tempId removed - not sent to API
             });
           }
           return r;
@@ -477,9 +492,16 @@ export class TisImageAndFileUploadAndViewComponent {
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { images: images, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
-            ir?.data?.map((file: any) =>{
-              // Match by S3 URL to update the correct file
-              let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
+            ir?.data?.map((file: any, idx: number) =>{
+              // Match by tempId first (more reliable for concurrent uploads), then fall back to S3 URL
+              const uploadedImage = tempIdMapping[idx];
+              let selectedIndex = this.filesArray?.findIndex(f => f.tempId === uploadedImage?.tempId);
+              
+              // Fallback to resourceUrl matching if tempId matching fails
+              if(selectedIndex === -1) {
+                selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
+              }
+              
               if(selectedIndex !== -1){
                 this.filesArray[selectedIndex] = {
                   ...this.filesArray[selectedIndex], 
@@ -599,8 +621,31 @@ export class TisImageAndFileUploadAndViewComponent {
 
     let uploadedFiles: any[] = [];
 
-    // Process all files concurrently and wait for completion
-    await Promise.all([...files].map(file => this.processFile(file, uploadedFiles, index)));
+    // Pre-allocate slots in filesArray to avoid race conditions
+    const startIndex = this.filesArray.length;
+    const placeholders = [...files].map((file, idx) => ({
+      tempId: `temp-${Date.now()}-${idx}`,
+      title: file.name,
+      name: file.name,
+      loading: true,
+      filename: file.name,
+      s3Url: '', // Will be filled during processing
+      sequence: this.isAddUploadedFileInLastNode ? startIndex + idx + 1 : this.filesArray.length + 1 - idx
+    }));
+
+    // Add all placeholders at once to prevent race conditions
+    if (this.isAddUploadedFileInLastNode) {
+      this.filesArray = [...this.filesArray, ...placeholders];
+    } else {
+      this.filesArray = [...placeholders.reverse(), ...this.filesArray];
+    }
+    this.setSliderLoading();
+
+    // Process all files concurrently with their pre-assigned indices
+    await Promise.all([...files].map((file, idx) => {
+      const targetIndex = this.isAddUploadedFileInLastNode ? startIndex + idx : idx;
+      return this.processFile(file, uploadedFiles, targetIndex, placeholders[this.isAddUploadedFileInLastNode ? idx : files.length - 1 - idx].tempId);
+    }));
 
     if (this.config?.isStoredDb) {
       await this.uploadFiles(uploadedFiles);
@@ -616,7 +661,7 @@ export class TisImageAndFileUploadAndViewComponent {
     event.target.value = '';
   }
 
-  async processFile(file: File, uploadedFiles: any[], index: number) {
+  async processFile(file: File, uploadedFiles: any[], index: number, tempId?: string) {
     let fileSize = file.size / 1024;
     if (this.config?.fileSize && fileSize > this.config?.fileSize) {
       let maxSize = this.config.fileSize / 1024;
@@ -635,23 +680,18 @@ export class TisImageAndFileUploadAndViewComponent {
           let uploadData = uploadResponse.data.uploadUrlData;
 
           let currentFileData = {
+            tempId: tempId || `temp-${Date.now()}`,
             title: file.name, name: file.name, s3Url: uploadData.resourceUrl, // Use S3 URL
             s3Path: uploadData.uploadPath, filename: file.name, id: null,
             uploadData: uploadData, loading: true, buffer: buffer,  // Set loading to true initially
             tags: null, tempTags: null, isEditMode: false, sequence: 1,
           };
 
-          if(index == -1){
-            if(this.isAddUploadedFileInLastNode){
-              this.filesArray = [...this.filesArray, currentFileData];
-            }
-            else{
-              this.filesArray = [currentFileData, ...this.filesArray];
-            }
-          }
-          else{
+          // Update the file at the pre-assigned index
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index] = {...this.filesArray[index], ...currentFileData};
           }
+          
           this.setSliderLoading();
           uploadedFiles.push(currentFileData);
 
@@ -659,14 +699,7 @@ export class TisImageAndFileUploadAndViewComponent {
           await this.helper.putFile(uploadData.uploadURL, e.target.result).toPromise();
 
           // After successful upload, ensure S3 URL is used and mark as completed
-          if(index == -1){
-            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].s3Url = uploadData.resourceUrl; // Ensure S3 URL
-            this.filesArray[currentIndex].loading = false;
-            // Ensure uploadData contains the correct S3 URL for database storage
-            this.filesArray[currentIndex].uploadData.resourceUrl = uploadData.resourceUrl;
-          }
-          else{
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index].s3Url = uploadData.resourceUrl; // Ensure S3 URL
             this.filesArray[index].loading = false;
             // Ensure uploadData contains the correct S3 URL for database storage
@@ -677,11 +710,7 @@ export class TisImageAndFileUploadAndViewComponent {
           resolve();
         } catch (error: any) {
           // Set loading to false on error as well
-          if(index == -1){
-            const currentIndex = this.isAddUploadedFileInLastNode ? this.filesArray.length - 1 : 0;
-            this.filesArray[currentIndex].loading = false;
-          }
-          else{
+          if(index !== -1 && this.filesArray[index]) {
             this.filesArray[index].loading = false;
           }
           this.helper.showHttpErrorMsg(error);
@@ -698,16 +727,24 @@ export class TisImageAndFileUploadAndViewComponent {
       if (data && data.length > 0) {
         console.log('There is a file pending to attach:', data);
 
+        // Keep track of tempIds for matching after API response
+        let tempIdMapping: any[] = [];
         let files: any[] = [];
         let fa = data.map((r: any) => {
           if (r?.uploadData) {
             // Ensure we're using the S3 URL, not any local file data
             const s3Url = r.uploadData.resourceUrl;
+            // Store tempId separately for matching, don't send it to API
+            tempIdMapping.push({
+              tempId: r.tempId,
+              resourceUrl: s3Url
+            });
             files.push({ 
               fileName: r.uploadData?.fileName, 
               resourceUrl: s3Url, // This ensures S3 URL is stored in database
               uploadPath: r.uploadData?.uploadPath, 
-              uploadURL: r.uploadData?.uploadURL 
+              uploadURL: r.uploadData?.uploadURL
+              // tempId removed - not sent to API
             });
           }
           return r;
@@ -715,9 +752,16 @@ export class TisImageAndFileUploadAndViewComponent {
 
         this.helper.attachFilesToEntity(this.urlConfig?.attachToEntity || 'not-specified', { files: files, entityId: this.currentEntityId, entityType: this.currentEntityType }, this.config.limit).subscribe({
           next: (ir: any) => {
-            ir?.data?.map((file: any) =>{
-              // Match by S3 URL to update the correct file
-              let selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
+            ir?.data?.map((file: any, idx: number) =>{
+              // Match by tempId first (more reliable for concurrent uploads), then fall back to S3 URL
+              const uploadedFile = tempIdMapping[idx];
+              let selectedIndex = this.filesArray?.findIndex(f => f.tempId === uploadedFile?.tempId);
+              
+              // Fallback to resourceUrl matching if tempId matching fails
+              if(selectedIndex === -1) {
+                selectedIndex = this.filesArray?.findIndex(f => f.uploadData?.resourceUrl == file.s3Url);
+              }
+              
               if(selectedIndex !== -1){
                 this.filesArray[selectedIndex] = {
                   ...this.filesArray[selectedIndex], 
@@ -1079,6 +1123,7 @@ export class TisImageAndFileUploadAndViewComponent {
 
   updateSequence(isShowMessage: boolean = false){
     // Update sequence for all files (including those without id yet)
+    // Re-calculate sequence based on current array order
     this.filesArray = this.filesArray.map((file: any, index: number) => {
       return {...file, sequence: (index + 1)};
     });
@@ -1098,7 +1143,10 @@ export class TisImageAndFileUploadAndViewComponent {
               this.helper.showSuccessMsg(ir.message, 'Success', 3000);
             }
             else{
-              this.helper.showSuccessMsg(`${this.type == 'image' ? 'Image' : 'File'} has been uploaded successfully`, 'Success', 3000);
+              // Only show success message when files actually have IDs (meaning they were uploaded)
+              if(filesWithId.length > 0) {
+                this.helper.showSuccessMsg(`${this.type == 'image' ? 'Image' : 'File'} has been uploaded successfully`, 'Success', 3000);
+              }
             }
             this.dataSequenceChange.emit(this.filesArray);
           },
