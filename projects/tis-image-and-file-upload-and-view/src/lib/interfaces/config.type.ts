@@ -15,4 +15,5 @@ export interface Config {
     colsForTab: number;
     colsForMobile: number;
     enableImageTags?: boolean;
+    useAdvancedCamera?: boolean;
 }

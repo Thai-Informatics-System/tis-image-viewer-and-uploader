@@ -21,6 +21,7 @@ export interface OptionConfig {
     colsForTab?: number;
     colsForMobile?: number;
     enableImageTags?: boolean;
+    useAdvancedCamera?: boolean;
 }
 
 export interface UrlConfig {
