@@ -88,7 +88,7 @@
                                 }
                                 <!-- Image upload options in grid -->
                                 <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
-                                    <mat-icon class="active">{{type == 'image' && isEnableCapture ? 'camera_alt' : 'upload_file'}}</mat-icon>
+                                    <mat-icon class="active">upload_file</mat-icon>
                                 </div>
                             </div>
                         }
@@ -97,7 +97,7 @@
             }
             @else if(!disabled){
                 <label style="display: flex; gap: 12px; flex-direction: column; justify-content: center; align-items: center; height: 100%; cursor: pointer;" (click)="loading? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
-                    <mat-icon>{{type == 'image' && isEnableCapture ? 'camera_alt' : 'upload_file'}}</mat-icon>
+                    <mat-icon>upload_file</mat-icon>
                     <p style="text-align: center; font-size: 14px; margin: 0px;">
                         {{label}}
                         @if(hint && hint != ''){
@@ -149,7 +149,7 @@
                     </div>
                     @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
                         <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid black; border-radius: 5px; padding: 5px; height: 56px;" (click)="loading? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
-                            <mat-icon style="width: 40px; min-width: 22px;">{{type == 'image' && isEnableCapture ? 'camera_alt' : 'upload_file'}}</mat-icon>
+                            <mat-icon style="width: 40px; min-width: 22px;">upload_file</mat-icon>
                             <div style="width: 100%;">
                                 <div style="display: flex; flex-direction: column; align-items: start; font-size: 14px;">
                                     {{label}}
@@ -164,7 +164,7 @@
             }
             @else if(!disabled){
                 <div style="cursor: pointer; display: flex; align-items: center; gap: 4px; border: 1px solid black; border-radius: 5px; padding: 5px; height: 56px;" (click)="loading? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
-                    <mat-icon style="width: 40px; min-width: 22px;">{{type == 'image' && isEnableCapture ? 'camera_alt' : 'upload_file'}}</mat-icon>
+                    <mat-icon style="width: 40px; min-width: 22px;">upload_file</mat-icon>
                     <div style="width: 100%;">
                         <div style="display: flex; flex-direction: column; align-items: start; font-size: 14px;">
                             {{label}}

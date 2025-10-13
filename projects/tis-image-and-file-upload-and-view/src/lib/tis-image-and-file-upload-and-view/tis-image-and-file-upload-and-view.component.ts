@@ -332,7 +332,191 @@ export class TisImageAndFileUploadAndViewComponent {
     document.getElementById(selectorId)?.click();
   }
 
-  async openCameraCapture() {
+  openCameraCapture() {
+    // Show the selection menu dialog first
+    this.showSelectionDialog();
+  }
+
+  private showSelectionDialog() {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+      box-sizing: border-box;
+      animation: fadeIn 0.3s ease;
+    `;
+
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .menu-option:hover {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: #d0d0d0;
+      }
+      .menu-option:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Create menu container
+    const menuContainer = document.createElement('div');
+    menuContainer.style.cssText = `
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      min-width: 280px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.4s ease;
+    `;
+
+    // Create title
+    const title = document.createElement('h3');
+    title.textContent = 'Select Option';
+    title.style.cssText = `
+      margin: 0 0 20px 0;
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      color: #333;
+    `;
+
+    // Create options container
+    const optionsContainer = document.createElement('div');
+    optionsContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    `;
+
+    // Photo Library Option
+    // const photoLibraryOption = this.createMenuOption(
+    //   `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#007AFF">
+    //     <path d="M0 0h24v24H0V0z" fill="none"/>
+    //     <path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/>
+    //   </svg>`,
+    //   'Photo Library',
+    //   () => {
+    //     this.closeSelectionDialog(modal);
+    //     this.openImageSelector();
+    //   }
+    // );
+
+    // Take Photo Option
+    const captureOption = this.createMenuOption(
+      `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#34C759">
+        <path d="M0 0h24v24H0V0z" fill="none"/>
+        <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h4.05l1.83-2h4.24l1.83 2H20v12zM12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/>
+      </svg>`,
+      'Take Photo',
+      () => {
+        this.closeSelectionDialog(modal);
+        this.openAdvancedCamera();
+      }
+    );
+
+    // Choose Files Option
+    const filesOption = this.createMenuOption(
+      `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FF9500">
+        <path d="M0 0h24v24H0V0z" fill="none"/>
+        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+      </svg>`,
+      'Choose Files',
+      () => {
+        this.closeSelectionDialog(modal);
+        this.openImageSelector();
+      }
+    );
+
+    // Add elements to container
+    menuContainer.appendChild(title);
+    // optionsContainer.appendChild(photoLibraryOption);
+    optionsContainer.appendChild(captureOption);
+    optionsContainer.appendChild(filesOption);
+    menuContainer.appendChild(optionsContainer);
+    modal.appendChild(menuContainer);
+    document.body.appendChild(modal);
+
+    // Handle click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeSelectionDialog(modal);
+      }
+    });
+
+    // Handle ESC key
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        this.closeSelectionDialog(modal);
+        document.removeEventListener('keydown', handleKeyPress);
+      }
+    };
+    document.addEventListener('keydown', handleKeyPress);
+  }
+
+  private createMenuOption(iconSvg: string, text: string, onClick: () => void): HTMLElement {
+    const option = document.createElement('div');
+    option.className = 'menu-option';
+    option.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #e8e8e8;
+      background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    `;
+
+    option.innerHTML = `
+      <div style="flex-shrink: 0;">${iconSvg}</div>
+      <div style="flex: 1; font-size: 16px; font-weight: 500; color: #333;">${text}</div>
+      <div style="flex-shrink: 0;">
+        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#999">
+          <path d="M0 0h24v24H0V0z" fill="none"/>
+          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+        </svg>
+      </div>
+    `;
+
+    option.addEventListener('click', onClick);
+    return option;
+  }
+
+  private closeSelectionDialog(modal: HTMLElement) {
+    if (modal.parentNode) {
+      modal.parentNode.removeChild(modal);
+    }
+  }
+
+  async openAdvancedCamera() {
     // Check configuration preference and browser support
     if (this.config.useAdvancedCamera && typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       try {
@@ -395,8 +579,8 @@ export class TisImageAndFileUploadAndViewComponent {
       width: 100%;
       height: 100%;
       background: linear-gradient(135deg, rgba(0, 0, 0, 0.12) 0%, rgba(20, 20, 30, 0.95) 100%);
-      backdrop-filter: blur(0px);
-      -webkit-backdrop-filter: blur(0px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       display: flex;
       flex-direction: column;
       align-items: center;
