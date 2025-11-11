@@ -31,7 +31,7 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input({required: true}) urlConfig!: UrlConfig;
   @Input() entityType!: string;
   @Input() entityId: any;
-  @Input() viewType: 'card' | 'list' = 'card';
+  @Input() viewType: 'card' | 'list' | 'compact' = 'card';
   @Input() type: 'image' | 'file' = 'image';
   @Input() label: string | null = null;
   @Input() disabled: boolean = false;
@@ -216,6 +216,10 @@ export class TisImageAndFileUploadAndViewComponent {
       });
       console.log("this.filesArray", this.filesArray);
     }
+    if(changes['viewType'] && changes['viewType'].currentValue == 'compact'){
+      this.config.limit = 1;
+      this.config.isMultiple = false;
+    }
   }
 
   prepareConfig() {
@@ -246,6 +250,9 @@ export class TisImageAndFileUploadAndViewComponent {
 
     if (this.options?.isMultiple) {
       this.config.isMultiple = this.options?.isMultiple;
+      if(this.viewType == 'compact'){
+        this.config.isMultiple = false;
+      }
     }
 
     if (this.options?.fileSize) {
@@ -254,6 +261,9 @@ export class TisImageAndFileUploadAndViewComponent {
 
     if (this.options?.limit) {
       this.config.limit = this.options?.limit;
+      if (this.viewType == 'compact') {
+        this.config.limit = 1;
+      }
     }
 
     if (this.options?.cols) {
