@@ -1,0 +1,343 @@
+.qr-dialog-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* Header */
+.qr-dialog-header {
+  position: relative;
+  padding: 24px 24px 16px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.qr-dialog-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.qr-dialog-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #999;
+}
+
+/* Content */
+.qr-dialog-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 300px;
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 250px;
+  color: #666;
+}
+
+/* Error State */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 250px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #f44336;
+}
+
+.error-message {
+  color: #666;
+  margin: 0;
+}
+
+/* QR Content */
+.qr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.connection-status .status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.connection-status.disconnected {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.connection-status.disconnected .status-indicator {
+  background: #999;
+}
+
+.connection-status.pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.connection-status.pending .status-indicator {
+  background: #ff9800;
+}
+
+.connection-status.connected {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.connection-status.connected .status-indicator {
+  background: #4caf50;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* QR Code Wrapper */
+.qr-code-wrapper {
+  position: relative;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.qr-code-wrapper.expired {
+  opacity: 0.5;
+}
+
+.qr-code-wrapper.connected {
+  border-color: #4caf50;
+  background: #f1f8f4;
+}
+
+.qr-canvas {
+  display: block;
+  width: 200px;
+  height: 200px;
+}
+
+/* Overlays */
+.expired-overlay,
+.connected-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+}
+
+.expired-overlay mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: #999;
+}
+
+.expired-overlay p {
+  margin: 0;
+  color: #666;
+  font-weight: 500;
+}
+
+.connected-overlay .success-icon {
+  font-size: 56px;
+  width: 56px;
+  height: 56px;
+  color: #4caf50;
+}
+
+.connected-overlay p {
+  margin: 0;
+  color: #2e7d32;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Pairing Code */
+.pairing-code-section {
+  text-align: center;
+}
+
+.pairing-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.pairing-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pairing-code:hover {
+  background: #eeeeee;
+}
+
+.pairing-code .code {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #1a1a1a;
+}
+
+.pairing-code .copy-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #666;
+}
+
+/* Countdown */
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+}
+
+.countdown mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Uploaded Files */
+.uploaded-files {
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.uploaded-files h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f1f8f4;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #333;
+}
+
+.file-item mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #4caf50;
+}
+
+.file-item span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Footer */
+.qr-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .qr-dialog-container {
+    min-width: 100%;
+    border-radius: 0;
+  }
+
+  .qr-canvas {
+    width: 180px;
+    height: 180px;
+  }
+}

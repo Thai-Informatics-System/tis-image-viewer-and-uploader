@@ -1,0 +1,96 @@
+<div class="qr-dialog-container">
+  <!-- Header -->
+  <div class="qr-dialog-header">
+    <h2 class="qr-dialog-title">{{ data.title || 'Upload from Mobile' }}</h2>
+    <p class="qr-dialog-subtitle">{{ data.subtitle || 'Scan this QR code with your mobile device to upload images' }}</p>
+    <button mat-icon-button class="close-btn" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="qr-dialog-content">
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-spinner diameter="48"></mat-spinner>
+      <p>Generating QR Code...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage && !isLoading" class="error-container">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <p class="error-message">{{ errorMessage }}</p>
+      <button mat-raised-button color="primary" (click)="refreshQrCode()">
+        Try Again
+      </button>
+    </div>
+
+    <!-- QR Code Display -->
+    <div *ngIf="!isLoading && !errorMessage" class="qr-content">
+      <!-- Connection Status -->
+      <div class="connection-status" [ngClass]="connectionStatus">
+        <div class="status-indicator"></div>
+        <span *ngIf="connectionStatus === 'disconnected'">Waiting for mobile...</span>
+        <span *ngIf="connectionStatus === 'pending'">Waiting for connection...</span>
+        <span *ngIf="connectionStatus === 'connected'">Mobile connected!</span>
+      </div>
+
+      <!-- QR Code -->
+      <div class="qr-code-wrapper" [class.expired]="isExpired" [class.connected]="isConnected">
+        <canvas #qrCanvas class="qr-canvas"></canvas>
+        
+        <!-- Expired Overlay -->
+        <div *ngIf="isExpired" class="expired-overlay">
+          <mat-icon>refresh</mat-icon>
+          <p>QR Code Expired</p>
+          <button mat-raised-button color="primary" (click)="refreshQrCode()">
+            Generate New Code
+          </button>
+        </div>
+
+        <!-- Connected Overlay -->
+        <div *ngIf="isConnected && !isExpired" class="connected-overlay">
+          <mat-icon class="success-icon">check_circle</mat-icon>
+          <p>Connected!</p>
+        </div>
+      </div>
+
+      <!-- Pairing Code -->
+      <div class="pairing-code-section" *ngIf="!isExpired && !isConnected">
+        <p class="pairing-label">Or enter code manually:</p>
+        <div class="pairing-code" (click)="copyPairingCode()" matTooltip="Click to copy">
+          <span class="code">{{ pairingCode }}</span>
+          <mat-icon class="copy-icon">content_copy</mat-icon>
+        </div>
+      </div>
+
+      <!-- Countdown Timer -->
+      <div class="countdown" *ngIf="data.showCountdown !== false && !isExpired && !isConnected">
+        <mat-icon>timer</mat-icon>
+        <span>Expires in {{ remainingTime }}</span>
+      </div>
+
+      <!-- Uploaded Files -->
+      <div class="uploaded-files" *ngIf="uploadedFiles.length > 0">
+        <h4>Uploaded Files ({{ uploadedFiles.length }})</h4>
+        <div class="file-list">
+          <div class="file-item" *ngFor="let upload of uploadedFiles">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ upload.file.fileName }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="qr-dialog-footer">
+    <button mat-button *ngIf="isConnected" color="warn" (click)="disconnect()">
+      <mat-icon>link_off</mat-icon>
+      Disconnect
+    </button>
+    <button mat-raised-button color="primary" (click)="close()">
+      {{ uploadedFiles.length > 0 ? 'Done' : 'Cancel' }}
+    </button>
+  </div>
+</div>

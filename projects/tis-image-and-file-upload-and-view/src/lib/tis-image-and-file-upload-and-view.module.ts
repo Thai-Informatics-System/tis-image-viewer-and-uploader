@@ -14,10 +14,12 @@ import { TisConfirmationDialogComponent } from './tis-confirmation-dialog/tis-co
 import { TisExcelFileViewerComponent } from './tis-file-viewer/tis-excel-file-viewer/tis-excel-file-viewer.component';
 import { TisPdfViewerComponent } from './tis-file-viewer/tis-pdf-viewer/tis-pdf-viewer.component';
 import { TisVideoComponent } from './tis-file-viewer/tis-video/tis-video.component';
+import { TisQrCodeDialogComponent } from './tis-qr-code-dialog/tis-qr-code-dialog.component';
 import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { HttpClientModule } from '@angular/common/http';
 
 
 const uiImports = [
@@ -40,10 +42,12 @@ const uiImports = [
     TisPdfViewerComponent,
     TisVideoComponent,
     TisErrorDialogComponent,
-    TisConfirmationDialogComponent
+    TisConfirmationDialogComponent,
+    TisQrCodeDialogComponent
   ],
   imports: [
     CommonModule,
+    HttpClientModule,
     NgxExtendedPdfViewerModule,
     FormsModule,
     ReactiveFormsModule,
@@ -51,7 +55,8 @@ const uiImports = [
     DragDropModule
   ],
   exports: [
-    TisImageAndFileUploadAndViewComponent
+    TisImageAndFileUploadAndViewComponent,
+    TisQrCodeDialogComponent
   ]
 })
 export class TisImageAndFileUploadAndViewModule { }

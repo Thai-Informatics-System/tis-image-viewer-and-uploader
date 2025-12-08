@@ -1,0 +1,166 @@
+<div class="upload-container">
+  <!-- Loading State -->
+  <div class="loading-state animate-fade-in" *ngIf="isValidating">
+    <mat-spinner diameter="48" color="primary"></mat-spinner>
+    <h2>Connecting...</h2>
+    <p>Validating connection with desktop</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-state animate-slide-up" *ngIf="!isValidating && errorMessage">
+    <div class="error-icon">
+      <mat-icon>error_outline</mat-icon>
+    </div>
+    <h2>Connection Failed</h2>
+    <p>{{ errorMessage }}</p>
+    <button mat-raised-button color="primary" (click)="validatePairing()" *ngIf="pairingCode">
+      <mat-icon>refresh</mat-icon>
+      Try Again
+    </button>
+  </div>
+
+  <!-- Connected State -->
+  <div class="connected-state animate-slide-up" *ngIf="!isValidating && isValid">
+    <!-- Header -->
+    <div class="header">
+      <div class="connection-status">
+        <div class="status-dot connected"></div>
+        <span>Connected to Desktop</span>
+      </div>
+      <button mat-icon-button (click)="disconnect()" matTooltip="Disconnect">
+        <mat-icon>link_off</mat-icon>
+      </button>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="upload-area" (click)="openFilePicker()">
+      <div class="upload-icon">
+        <mat-icon>cloud_upload</mat-icon>
+      </div>
+      <h2>Tap to Select Files</h2>
+      <p>or use the buttons below</p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" class="action-btn" (click)="openCamera()">
+        <mat-icon>photo_camera</mat-icon>
+        <span>Camera</span>
+      </button>
+      <button mat-raised-button color="accent" class="action-btn" (click)="openFilePicker()">
+        <mat-icon>photo_library</mat-icon>
+        <span>Gallery</span>
+      </button>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input
+      #fileInput
+      type="file"
+      multiple
+      [accept]="pairingInfo?.accept || 'image/*'"
+      (change)="onFilesSelected($event)"
+      style="display: none;"
+    />
+    <input
+      #cameraInput
+      type="file"
+      accept="image/*"
+      capture="environment"
+      (change)="onFilesSelected($event)"
+      style="display: none;"
+    />
+
+    <!-- Upload Queue -->
+    <div class="upload-queue" *ngIf="uploadQueue.length > 0">
+      <div class="queue-header">
+        <h3>
+          <mat-icon>upload_file</mat-icon>
+          Uploads ({{ completedCount }}/{{ uploadQueue.length }})
+        </h3>
+        <span class="queue-status" *ngIf="isUploading">
+          <mat-spinner diameter="16"></mat-spinner>
+          Uploading...
+        </span>
+      </div>
+
+      <div class="file-list">
+        <div 
+          class="file-item" 
+          *ngFor="let item of uploadQueue; let i = index"
+          [class.uploading]="item.status === 'uploading'"
+          [class.complete]="item.status === 'complete'"
+          [class.error]="item.status === 'error'"
+        >
+          <!-- Preview or Icon -->
+          <div class="file-preview">
+            <img *ngIf="item.preview" [src]="item.preview" alt="Preview" />
+            <mat-icon *ngIf="!item.preview">{{ getFileIcon(item.file) }}</mat-icon>
+          </div>
+
+          <!-- File Info -->
+          <div class="file-info">
+            <span class="file-name">{{ item.file.name }}</span>
+            <span class="file-size">{{ formatFileSize(item.file.size) }}</span>
+            
+            <!-- Progress Bar -->
+            <mat-progress-bar
+              *ngIf="item.status === 'uploading'"
+              mode="determinate"
+              [value]="item.progress"
+            ></mat-progress-bar>
+
+            <!-- Error Message -->
+            <span class="error-text" *ngIf="item.status === 'error'">
+              {{ item.error }}
+            </span>
+          </div>
+
+          <!-- Status/Actions -->
+          <div class="file-actions">
+            <!-- Pending -->
+            <mat-icon *ngIf="item.status === 'pending'" class="status-icon pending">
+              hourglass_empty
+            </mat-icon>
+
+            <!-- Uploading -->
+            <span *ngIf="item.status === 'uploading'" class="progress-text">
+              {{ item.progress }}%
+            </span>
+
+            <!-- Complete -->
+            <mat-icon *ngIf="item.status === 'complete'" class="status-icon complete">
+              check_circle
+            </mat-icon>
+
+            <!-- Error -->
+            <button
+              mat-icon-button
+              *ngIf="item.status === 'error'"
+              (click)="retryUpload(i)"
+              class="retry-btn"
+            >
+              <mat-icon>refresh</mat-icon>
+            </button>
+
+            <!-- Remove -->
+            <button
+              mat-icon-button
+              *ngIf="item.status !== 'uploading'"
+              (click)="removeFile(i)"
+              class="remove-btn"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Summary -->
+    <div class="success-summary animate-slide-up" *ngIf="totalUploaded > 0 && !isUploading">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ totalUploaded }} file(s) sent to desktop</span>
+    </div>
+  </div>
+</div>

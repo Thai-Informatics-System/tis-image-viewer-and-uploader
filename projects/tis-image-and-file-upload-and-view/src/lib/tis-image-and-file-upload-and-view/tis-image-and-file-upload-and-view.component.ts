@@ -1,12 +1,14 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, SimpleChanges, OnDestroy } from '@angular/core';
 import { TisFileViewerComponent } from '../tis-file-viewer/tis-file-viewer.component';
-import type { DialogConfig, FileViewerDialogData, FileViewerFileType, OptionConfig, UrlConfig } from '../interfaces';
+import type { DialogConfig, FileViewerDialogData, FileViewerFileType, OptionConfig, UrlConfig, TisRemoteUploadConfig, TisRemoteUploadEvent } from '../interfaces';
 import { TisPreviewImageComponent } from '../tis-preview-image/tis-preview-image.component';
-import { BehaviorSubject, Observable, map, sequenceEqual, shareReplay } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, map, sequenceEqual, shareReplay, takeUntil } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
+import { TisQrCodeDialogComponent, TisQrCodeDialogData } from '../tis-qr-code-dialog/tis-qr-code-dialog.component';
+import { TisRemoteUploadService } from '../services/tis-remote-upload.service';
 import { Config } from '../interfaces/config.type';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
@@ -25,8 +27,9 @@ const generateRandomString = (length: number): string => {
   templateUrl: './tis-image-and-file-upload-and-view.component.html',
   styleUrl: './tis-image-and-file-upload-and-view.component.css'
 })
-export class TisImageAndFileUploadAndViewComponent {
+export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   private changeSubject = new BehaviorSubject<boolean>(false);
+  private destroy$ = new Subject<void>();
 
   @Input({required: true}) urlConfig!: UrlConfig;
   @Input() entityType!: string;
@@ -50,11 +53,16 @@ export class TisImageAndFileUploadAndViewComponent {
   @Input() isEnableCapture: boolean = false;
   @Input() deleteConfirmationMsg!: string;
   @Input() dialogConfig!: DialogConfig;
+  
+  // Remote Upload Configuration
+  @Input() remoteUploadConfig: TisRemoteUploadConfig | null = null;
+  
   @Output() uploadInProgress = new EventEmitter();
   @Output() onUploaded = new EventEmitter();
   @Output() onFileSelect = new EventEmitter<any>();
   @Output() onFileRemoved = new EventEmitter<any>();
   @Output() onError = new EventEmitter();
+  @Output() onRemoteUpload = new EventEmitter<TisRemoteUploadEvent>();
 
   @Input() isShowImageSequence: boolean = false;
   @Input() enableDragNDrop: boolean = false;
@@ -140,7 +148,8 @@ export class TisImageAndFileUploadAndViewComponent {
   constructor(
     public dialog: MatDialog,
     private helper: TisHelperService,
-    private breakpointObserver: BreakpointObserver
+    private breakpointObserver: BreakpointObserver,
+    private remoteUploadService: TisRemoteUploadService
   ) { }
 
   ngOnInit() {
@@ -157,6 +166,9 @@ export class TisImageAndFileUploadAndViewComponent {
       );
     
     this.prepareConfig();
+
+    // Initialize remote upload if configured
+    this.initRemoteUpload();
 
     // if(this.viewType == 'single-card'){
     //   this.generateFilesForSingleCard();
@@ -219,6 +231,9 @@ export class TisImageAndFileUploadAndViewComponent {
     if(changes['viewType'] && changes['viewType'].currentValue == 'compact'){
       this.config.limit = 1;
       this.config.isMultiple = false;
+    }
+    if (changes['remoteUploadConfig']) {
+      this.initRemoteUpload();
     }
   }
 
@@ -1732,5 +1747,134 @@ export class TisImageAndFileUploadAndViewComponent {
     let tempTagsArr: any[] = tempTag?.split(' ');
 
     return tempTagsArr?.filter(e => e && e != '');
+  }
+
+  // =====================
+  // Remote Upload Methods
+  // =====================
+
+  /**
+   * Check if remote upload is available and configured
+   */
+  isRemoteUploadAvailable(): boolean {
+    return !!(
+      this.remoteUploadConfig?.enabled &&
+      this.remoteUploadConfig?.socketAdapter &&
+      !this.isMobile &&
+      !this.isTab
+    );
+  }
+
+  /**
+   * Initialize remote upload configuration
+   * Call this in ngOnInit or when config changes
+   */
+  private initRemoteUpload(): void {
+    if (this.remoteUploadConfig?.enabled && this.remoteUploadConfig?.socketAdapter) {
+      this.remoteUploadService.configure(this.remoteUploadConfig);
+
+      // Subscribe to remote uploads
+      this.remoteUploadService.getRemoteUploads()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(event => {
+          this.handleRemoteUpload(event);
+        });
+    }
+  }
+
+  /**
+   * Handle a remote upload event
+   */
+  private handleRemoteUpload(event: TisRemoteUploadEvent): void {
+    console.log('[TisImageAndFileUploadAndView] Remote upload received:', event);
+
+    // Check if we've reached the limit
+    if (this.config?.limit && this.filesArray.length >= this.config.limit) {
+      this.helper.showErrorMsg(`Maximum limit of ${this.config.limit} files reached.`, 'Limit Reached');
+      return;
+    }
+
+    // Add the uploaded file to the array
+    const newFile = {
+      s3Url: event.file.s3Url,
+      title: event.file.fileName,
+      name: event.file.fileName,
+      filename: event.file.fileName,
+      mimeType: event.file.mimeType,
+      size: event.file.size,
+      uploadData: event.file.uploadData,
+      loading: false,
+      sequence: this.filesArray.length + 1,
+      remoteUpload: true,
+      mobileDeviceId: event.mobileDeviceId,
+      uploadedAt: event.timestamp
+    };
+
+    if (this.isAddUploadedFileInLastNode) {
+      this.filesArray.push(newFile);
+    } else {
+      this.filesArray.unshift(newFile);
+    }
+
+    this.setSliderLoading();
+    this.onSubmit();
+    this.updateSequence();
+    this.onRemoteUpload.emit(event);
+
+    this.helper.showSuccessMsg(
+      `${this.type === 'image' ? 'Image' : 'File'} uploaded from mobile device`,
+      'Remote Upload',
+      3000
+    );
+  }
+
+  /**
+   * Open the QR code dialog for mobile upload
+   */
+  openRemoteUploadDialog(): void {
+    if (!this.isRemoteUploadAvailable()) {
+      this.helper.showErrorMsg('Remote upload is not available', 'Not Available');
+      return;
+    }
+
+    const dialogData: TisQrCodeDialogData = {
+      title: this.dialogConfig?.title || 'Upload from Mobile',
+      subtitle: `Scan this QR code to upload ${this.type === 'image' ? 'images' : 'files'} from your mobile device`,
+      qrSize: 200,
+      showCountdown: true,
+      autoCloseOnUpload: false
+    };
+
+    const dialogRef = this.dialog.open(TisQrCodeDialogComponent, {
+      width: this.isMobile ? '100%' : '420px',
+      maxWidth: '100%',
+      panelClass: ['tis-qr-code-dialog'],
+      data: dialogData,
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      console.log('[TisImageAndFileUploadAndView] QR dialog closed:', result);
+      // Files are already added via the remote upload subscription
+    });
+  }
+
+  /**
+   * Check if currently paired with a mobile device
+   */
+  isRemotePaired(): boolean {
+    return this.remoteUploadService.isPaired();
+  }
+
+  /**
+   * Disconnect from paired mobile device
+   */
+  disconnectRemote(): void {
+    this.remoteUploadService.disconnect();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

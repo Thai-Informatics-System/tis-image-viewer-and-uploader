@@ -8,10 +8,15 @@
     "build-library": "ng build tis-image-and-file-upload-and-view --configuration=production",
     "build-library-watch": "ng build tis-image-and-file-upload-and-view --configuration=production --watch",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:mobile": "ng build tis-mobile-upload",
+    "build:mobile:stage": "ng build tis-mobile-upload --configuration=stage",
+    "build:mobile:prod": "ng build tis-mobile-upload --configuration=production",
+    "serve:mobile": "ng serve tis-mobile-upload"
   },
   "private": true,
   "dependencies": {
+    "@angular/animations": "^19.2.17",
     "@angular/cdk": "^19.2.9",
     "@angular/common": "^19.2.0",
     "@angular/compiler": "^19.2.0",
