@@ -66,9 +66,14 @@ jobs:
 
       - name: Deployment Summary
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment:** Production" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket:** ${{ env.MOBILE_UPLOAD_S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront Distribution:** ${{ env.MOBILE_UPLOAD_CLOUDFRONT_ID }}" >> $GITHUB_STEP_SUMMARY
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ## Deployment Summary
+          
+          | Property | Value |
+          |----------|-------|
+          | **Environment** | Production |
+          | **Branch** | ${{ github.ref_name }} |
+          | **Commit** | \`${{ github.sha }}\` |
+          | **S3 Bucket** | ${{ env.MOBILE_UPLOAD_S3_BUCKET }} |
+          | **CloudFront Distribution** | ${{ env.MOBILE_UPLOAD_CLOUDFRONT_ID }} |
+          EOF
