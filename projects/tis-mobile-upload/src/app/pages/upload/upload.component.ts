@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, takeUntil, firstValueFrom } from 'rxjs';
+import { NgxScannerQrcodeComponent, ScannerQRCodeResult } from 'ngx-scanner-qrcode';
 
 import { MobileSocketService, QrCodeParams, ConnectionStatus, DesktopMessage } from '../../services/mobile-socket.service';
 import { MobileUploadService } from '../../services/mobile-upload.service';
@@ -21,13 +22,15 @@ import { MobileUploadService } from '../../services/mobile-upload.service';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatProgressBarModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    NgxScannerQrcodeComponent
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss']
 })
 export class UploadComponent implements OnInit, OnDestroy {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('scanner') scanner!: NgxScannerQrcodeComponent;
 
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
@@ -70,6 +73,10 @@ export class UploadComponent implements OnInit, OnDestroy {
   readonly isUploading = signal(false);
   readonly uploadProgress = signal(0);
   readonly uploadedFiles = signal<UploadedFile[]>([]);
+
+  // QR scanning state
+  readonly isScanning = signal(false);
+  readonly scanError = signal<string | null>(null);
 
   // File type config
   readonly acceptTypes = computed(() => {
@@ -374,6 +381,132 @@ export class UploadComponent implements OnInit, OnDestroy {
 
   isImageFile(mimeType: string): boolean {
     return mimeType.startsWith('image/');
+  }
+
+  // -------------------------------------------------------------------------
+  // QR Scanning Methods
+  // -------------------------------------------------------------------------
+
+  startScanning(): void {
+    this.scanError.set(null);
+    this.isScanning.set(true);
+    // Scanner will auto-start when component is visible
+    if (this.scanner) {
+      this.scanner.start();
+    }
+  }
+
+  stopScanning(): void {
+    this.isScanning.set(false);
+    if (this.scanner) {
+      this.scanner.stop();
+    }
+  }
+
+  onScanSuccess(results: ScannerQRCodeResult[]): void {
+    if (results && results.length > 0) {
+      const result = results[0];
+      const scannedValue = result.value;
+      
+      console.log('[QR Scanner] Scanned:', scannedValue);
+      
+      // Parse the QR code data
+      const params = this.parseQrCodeData(scannedValue);
+      
+      if (params) {
+        this.stopScanning();
+        this.connectWithParams(params);
+      } else {
+        this.scanError.set('Invalid QR code. Please scan the QR code from the desktop app.');
+      }
+    }
+  }
+
+  onScanError(error: any): void {
+    console.error('[QR Scanner] Error:', error);
+    this.scanError.set('Camera access denied or not available. Please check permissions.');
+    this.stopScanning();
+  }
+
+  /**
+   * Parse QR code data - handles both URL format and direct JSON
+   * Expected URL format: https://app.example.com/mobile-upload?data=BASE64_ENCODED_JSON
+   * Where JSON contains: { token, deviceId, userId, apiUrl }
+   */
+  private parseQrCodeData(scannedValue: string): QrCodeParams | null {
+    try {
+      // Check if it's a URL
+      if (scannedValue.startsWith('http://') || scannedValue.startsWith('https://')) {
+        const url = new URL(scannedValue);
+        
+        // Try to get the 'data' param (base64 encoded JSON)
+        const dataParam = url.searchParams.get('data');
+        if (dataParam) {
+          try {
+            const decoded = atob(dataParam);
+            const params = JSON.parse(decoded) as QrCodeParams;
+            if (this.isValidQrParams(params)) {
+              return params;
+            }
+          } catch (e) {
+            console.warn('[QR Scanner] Failed to decode data param:', e);
+          }
+        }
+        
+        // Try to get individual params from URL
+        const token = url.searchParams.get('token');
+        const deviceId = url.searchParams.get('deviceId');
+        const userId = url.searchParams.get('userId');
+        const apiUrl = url.searchParams.get('apiUrl');
+        
+        if (token && deviceId && userId && apiUrl) {
+          return { token, deviceId, userId, apiUrl: decodeURIComponent(apiUrl) };
+        }
+      }
+      
+      // Try to parse as direct JSON
+      try {
+        const params = JSON.parse(scannedValue) as QrCodeParams;
+        if (this.isValidQrParams(params)) {
+          return params;
+        }
+      } catch (e) {
+        // Not JSON, continue
+      }
+      
+      return null;
+    } catch (e) {
+      console.error('[QR Scanner] Parse error:', e);
+      return null;
+    }
+  }
+
+  private isValidQrParams(params: any): params is QrCodeParams {
+    return params && 
+           typeof params.token === 'string' && 
+           typeof params.deviceId === 'string' && 
+           typeof params.userId === 'string' && 
+           typeof params.apiUrl === 'string';
+  }
+
+  private connectWithParams(params: QrCodeParams): void {
+    console.log('[QR Scanner] Connecting with params:', { 
+      deviceId: params.deviceId, 
+      userId: params.userId,
+      apiUrl: params.apiUrl 
+    });
+    
+    this.snackBar.open('QR code scanned successfully! Connecting...', 'OK', { duration: 2000 });
+    
+    // Store API URL
+    this.apiUrl.set(params.apiUrl);
+    this.desktopDeviceId.set(params.deviceId);
+    
+    // Connect via socket service - use the initialize method
+    this.socketService.initialize(params).catch((error) => {
+      console.error('[QR Scanner] Connection failed:', error);
+      this.snackBar.open('Connection failed. Please try again.', 'OK', { duration: 3000 });
+    });
   }
 }
 

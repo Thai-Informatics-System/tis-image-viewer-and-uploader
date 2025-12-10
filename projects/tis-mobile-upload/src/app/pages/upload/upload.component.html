@@ -21,15 +21,68 @@
   <!-- Error State -->
   @if (!isInitializing() && initError()) {
     <div class="error-state animate-slide-up">
-      <div class="error-icon">
-        <mat-icon>error_outline</mat-icon>
-      </div>
-      <h2>Connection Failed</h2>
-      <p>{{ initError() }}</p>
-      <button mat-raised-button color="primary" (click)="retryConnection()">
-        <mat-icon>refresh</mat-icon>
-        Try Again
-      </button>
+      @if (!isScanning()) {
+        <!-- Default error view with scan option -->
+        <div class="error-icon">
+          <mat-icon>error_outline</mat-icon>
+        </div>
+        <h2>Connection Failed</h2>
+        <p>{{ initError() }}</p>
+        
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" (click)="startScanning()">
+            <mat-icon>qr_code_scanner</mat-icon>
+            Scan QR Code
+          </button>
+          <button mat-stroked-button color="primary" (click)="retryConnection()">
+            <mat-icon>refresh</mat-icon>
+            Retry Last Connection
+          </button>
+        </div>
+
+        <p class="helper-text">
+          Open the desktop app and scan the QR code to connect.
+        </p>
+      } @else {
+        <!-- QR Scanner View -->
+        <div class="scanner-container">
+          <div class="scanner-header">
+            <h2>Scan QR Code</h2>
+            <button mat-icon-button (click)="stopScanning()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <!-- Scanner -->
+          <div class="scanner-viewport">
+            <ngx-scanner-qrcode
+              #scanner
+              [config]="{ fps: 30, vibrate: 100 }"
+              (event)="onScanSuccess($event)"
+              (error)="onScanError($event)"
+            ></ngx-scanner-qrcode>
+            
+            <!-- Scanner overlay frame -->
+            <div class="scanner-frame">
+              <div class="corner top-left"></div>
+              <div class="corner top-right"></div>
+              <div class="corner bottom-left"></div>
+              <div class="corner bottom-right"></div>
+            </div>
+          </div>
+
+          @if (scanError()) {
+            <div class="scan-error">
+              <mat-icon>warning</mat-icon>
+              <span>{{ scanError() }}</span>
+            </div>
+          }
+
+          <p class="scanner-instructions">
+            Point your camera at the QR code displayed in the desktop app
+          </p>
+        </div>
+      }
     </div>
   }
 
@@ -139,12 +192,57 @@
       <!-- Not Connected Message -->
       @if (!isConnected()) {
         <div class="not-connected-message">
-          <mat-icon>wifi_off</mat-icon>
-          <p>Waiting for connection...</p>
-          <button mat-raised-button color="primary" (click)="retryConnection()">
-            <mat-icon>refresh</mat-icon>
-            Reconnect
-          </button>
+          @if (!isScanning()) {
+            <mat-icon>wifi_off</mat-icon>
+            <p>Waiting for connection...</p>
+            <div class="reconnect-actions">
+              <button mat-raised-button color="primary" (click)="retryConnection()">
+                <mat-icon>refresh</mat-icon>
+                Reconnect
+              </button>
+              <button mat-stroked-button color="primary" (click)="startScanning()">
+                <mat-icon>qr_code_scanner</mat-icon>
+                Scan New QR
+              </button>
+            </div>
+          } @else {
+            <!-- Inline QR Scanner -->
+            <div class="scanner-container inline-scanner">
+              <div class="scanner-header">
+                <h3>Scan QR Code</h3>
+                <button mat-icon-button (click)="stopScanning()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="scanner-viewport">
+                <ngx-scanner-qrcode
+                  #scanner
+                  [config]="{ fps: 30, vibrate: 100 }"
+                  (event)="onScanSuccess($event)"
+                  (error)="onScanError($event)"
+                ></ngx-scanner-qrcode>
+                
+                <div class="scanner-frame">
+                  <div class="corner top-left"></div>
+                  <div class="corner top-right"></div>
+                  <div class="corner bottom-left"></div>
+                  <div class="corner bottom-right"></div>
+                </div>
+              </div>
+
+              @if (scanError()) {
+                <div class="scan-error">
+                  <mat-icon>warning</mat-icon>
+                  <span>{{ scanError() }}</span>
+                </div>
+              }
+
+              <p class="scanner-instructions">
+                Point your camera at the QR code
+              </p>
+            </div>
+          }
         </div>
       }
     </div>
