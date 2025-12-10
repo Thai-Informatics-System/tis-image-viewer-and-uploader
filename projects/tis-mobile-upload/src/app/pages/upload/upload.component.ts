@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, effect, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, effect, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient, HttpEventType } from '@angular/common/http';
@@ -28,7 +28,7 @@ import { MobileUploadService } from '../../services/mobile-upload.service';
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss']
 })
-export class UploadComponent implements OnInit, OnDestroy {
+export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('scanner') scanner!: NgxScannerQrcodeComponent;
 
@@ -39,6 +39,7 @@ export class UploadComponent implements OnInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
 
   private destroy$ = new Subject<void>();
+  private scannerStartPending = false;
 
   // -------------------------------------------------------------------------
   // State Signals
@@ -119,6 +120,32 @@ export class UploadComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    // Stop scanner if running
+    if (this.scanner) {
+      this.scanner.stop();
+    }
+  }
+
+  ngAfterViewChecked(): void {
+    // Start scanner after view is ready
+    if (this.scannerStartPending && this.scanner) {
+      this.scannerStartPending = false;
+      // Give the scanner a moment to initialize
+      setTimeout(() => {
+        if (this.scanner && this.isScanning()) {
+          console.log('[QR Scanner] Starting scanner...');
+          this.scanner.start().subscribe({
+            next: (result) => {
+              console.log('[QR Scanner] Scanner started:', result);
+            },
+            error: (error) => {
+              console.error('[QR Scanner] Failed to start:', error);
+              this.scanError.set('Failed to access camera. Please check permissions.');
+            }
+          });
+        }
+      }, 100);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -390,16 +417,16 @@ export class UploadComponent implements OnInit, OnDestroy {
   startScanning(): void {
     this.scanError.set(null);
     this.isScanning.set(true);
-    // Scanner will auto-start when component is visible
-    if (this.scanner) {
-      this.scanner.start();
-    }
+    // Set pending flag - scanner will be started in ngAfterViewChecked
+    // because the scanner component needs to be rendered first
+    this.scannerStartPending = true;
   }
 
   stopScanning(): void {
     this.isScanning.set(false);
+    this.scannerStartPending = false;
     if (this.scanner) {
-      this.scanner.stop();
+      this.scanner.stop().subscribe();
     }
   }
 

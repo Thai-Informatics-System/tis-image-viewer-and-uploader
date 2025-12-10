@@ -33,8 +33,8 @@
         <div class="device-row">
           <mat-icon class="device-icon desktop">computer</mat-icon>
           <div class="device-details">
-            <span class="device-label">This Device</span>
-            <span class="device-id">{{ formatDeviceId(desktopDeviceId) }}</span>
+            <span class="device-label">THIS DEVICE</span>
+            <span class="device-id" [title]="desktopDeviceId">{{ formatDeviceId(desktopDeviceId) }}</span>
           </div>
         </div>
         
@@ -45,8 +45,8 @@
         <div class="device-row" *ngIf="mobileDeviceId">
           <mat-icon class="device-icon mobile">smartphone</mat-icon>
           <div class="device-details">
-            <span class="device-label">Connected Mobile</span>
-            <span class="device-id">{{ formatDeviceId(mobileDeviceId) }}</span>
+            <span class="device-label">CONNECTED MOBILE</span>
+            <span class="device-id" [title]="mobileDeviceId">{{ formatDeviceId(mobileDeviceId) }}</span>
           </div>
         </div>
       </div>
@@ -85,7 +85,14 @@
 
         <!-- QR Code -->
         <div class="qr-code-wrapper" [class.expired]="isExpired">
-          <canvas #qrCanvas class="qr-canvas"></canvas>
+          <qrcode 
+            *ngIf="qrData"
+            [qrdata]="qrData" 
+            [width]="data.qrSize || 200" 
+            [errorCorrectionLevel]="'M'"
+            [elementType]="'canvas'"
+            [cssClass]="'qr-canvas'"
+          ></qrcode>
           
           <!-- Expired Overlay -->
           <div *ngIf="isExpired" class="expired-overlay">

@@ -56,10 +56,9 @@
           <!-- Scanner -->
           <div class="scanner-viewport">
             <ngx-scanner-qrcode
-              #scanner
-              [config]="{ fps: 30, vibrate: 100 }"
+              #scanner="scanner"
+              [config]="{ fps: 30, vibrate: 100, isBeep: true }"
               (event)="onScanSuccess($event)"
-              (error)="onScanError($event)"
             ></ngx-scanner-qrcode>
             
             <!-- Scanner overlay frame -->
@@ -217,10 +216,9 @@
 
               <div class="scanner-viewport">
                 <ngx-scanner-qrcode
-                  #scanner
-                  [config]="{ fps: 30, vibrate: 100 }"
+                  #scanner="scanner"
+                  [config]="{ fps: 30, vibrate: 100, isBeep: true }"
                   (event)="onScanSuccess($event)"
-                  (error)="onScanError($event)"
                 ></ngx-scanner-qrcode>
                 
                 <div class="scanner-frame">

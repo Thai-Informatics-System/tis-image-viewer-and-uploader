@@ -200,10 +200,13 @@ export class TisRemoteUploadService implements OnDestroy {
       const endpoint = this.config?.apiEndpoints?.generateMobileLinkToken 
         || `${this.apiUrl}/ease-of-access/mobile-upload-link-token`;
 
-      const response = await this.callHttpApi<{ token: string; expiresAt: number }>(
+      const apiResponse = await this.callHttpApi<{ success: boolean; data: { token: string; expiresAt: number; deviceId?: string; userId?: string; apiUrl?: string } }>(
         endpoint, 
         { deviceId: this.deviceId, userId: this.userId }
       );
+
+      // Unwrap the data from API response
+      const response = apiResponse.data || apiResponse as any;
 
       const expirySeconds = this.config?.qrCode?.expirySeconds || DEFAULT_QR_EXPIRY;
       const expiresAt = response.expiresAt || Date.now() + expirySeconds * 1000;

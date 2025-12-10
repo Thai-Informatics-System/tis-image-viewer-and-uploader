@@ -20,6 +20,7 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { HttpClientModule } from '@angular/common/http';
+import { QRCodeComponent } from 'angularx-qrcode';
 
 
 const uiImports = [
@@ -51,6 +52,7 @@ const uiImports = [
     NgxExtendedPdfViewerModule,
     FormsModule,
     ReactiveFormsModule,
+    QRCodeComponent,
     ...uiImports,
     DragDropModule
   ],
