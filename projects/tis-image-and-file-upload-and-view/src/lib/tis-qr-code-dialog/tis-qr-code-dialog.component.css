@@ -1,8 +1,8 @@
 .qr-dialog-container {
   display: flex;
   flex-direction: column;
-  min-width: 320px;
-  max-width: 400px;
+  min-width: 360px;
+  max-width: 440px;
   background: #ffffff;
   border-radius: 16px;
   overflow: hidden;
@@ -87,6 +87,153 @@
   align-items: center;
   gap: 20px;
   width: 100%;
+}
+
+/* Device Info Section */
+.device-info-section {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.device-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 10px;
+  min-width: 120px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.device-card.this-device {
+  border: 2px solid #2196f3;
+}
+
+.device-card.connected-device {
+  border: 2px dashed #9e9e9e;
+}
+
+.device-card.connected-device.active {
+  border: 2px solid #4caf50;
+}
+
+.device-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.device-card.this-device .device-label {
+  color: #2196f3;
+}
+
+.device-card.connected-device .device-label {
+  color: #9e9e9e;
+}
+
+.device-card.connected-device.active .device-label {
+  color: #4caf50;
+}
+
+.device-label mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.device-id {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.5px;
+}
+
+.device-id.waiting {
+  color: #9e9e9e;
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Connection Line */
+.connection-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.connection-line .line {
+  width: 40px;
+  height: 2px;
+  background: #e0e0e0;
+  border-radius: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.connection-line.waiting .line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #2196f3, transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+.connection-line.connected .line {
+  background: #4caf50;
+}
+
+.connection-line mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: #9e9e9e;
+}
+
+.connection-line.waiting mat-icon {
+  color: #ff9800;
+  animation: blink 1s infinite;
+}
+
+.connection-line.connected mat-icon {
+  color: #4caf50;
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 200%;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* Connection Status */
@@ -339,5 +486,18 @@
   .qr-canvas {
     width: 180px;
     height: 180px;
+  }
+
+  .device-info-section {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .connection-line {
+    transform: rotate(90deg);
+  }
+
+  .device-card {
+    min-width: 100%;
   }
 }

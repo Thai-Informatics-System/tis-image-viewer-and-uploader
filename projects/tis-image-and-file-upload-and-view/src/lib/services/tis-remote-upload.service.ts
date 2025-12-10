@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, Observable, Subject, Subscription, of, throwError } from 'rxjs';
-import { catchError, filter, map, take, takeUntil, tap, timeout } from 'rxjs/operators';
+import { BehaviorSubject, Observable, Subject, Subscription, throwError } from 'rxjs';
+import { catchError, take, takeUntil, timeout } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import {
   TisSocketAdapter,
@@ -12,56 +12,115 @@ import {
 } from '../interfaces/socket-adapter.interface';
 
 const DEFAULT_PAIRING_TTL = 24 * 60 * 60 * 1000; // 24 hours
-const DEFAULT_STORAGE_KEY = 'tis-remote-upload-pairing';
+const DEFAULT_STORAGE_KEY = 'tis-remote-upload-session';
 const DEFAULT_QR_EXPIRY = 300; // 5 minutes
+
+/**
+ * Mobile connection info stored in localStorage
+ */
+interface MobileConnectionInfo {
+  mobileDeviceId: string;
+  connectedAt: number;
+  lastActivity: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class TisRemoteUploadService implements OnDestroy {
+  private static readonly COMPONENT = 'TisRemoteUploadService';
+  private static readonly MOBILE_CONNECTION_KEY = 'tis-mobile-connection';
+
   private destroy$ = new Subject<void>();
   private channelSubscription: Subscription | null = null;
 
   private config: TisRemoteUploadConfig | null = null;
   private socketAdapter: TisSocketAdapter | null = null;
 
+  // Cached values
+  private deviceId: string = '';
+  private userId: string = '';
+  private apiUrl: string = '';
+  private channelName: string = '';
+
   // State observables
   private pairingSession$ = new BehaviorSubject<TisPairingSession | null>(null);
   private connectionStatus$ = new BehaviorSubject<'disconnected' | 'pending' | 'connected'>('disconnected');
+  private mobileConnection$ = new BehaviorSubject<MobileConnectionInfo | null>(null);
   private remoteUpload$ = new Subject<TisRemoteUploadEvent>();
   private error$ = new Subject<string>();
 
   constructor(private http: HttpClient) {
-    // Try to restore session from storage on init
-    this.restoreSession();
+    // Restore mobile connection from storage on init
+    this.restoreMobileConnection();
   }
+
+  // ===========================================================================
+  // Configuration
+  // ===========================================================================
 
   /**
    * Configure the remote upload service
    */
-  configure(config: TisRemoteUploadConfig): void {
+  async configure(config: TisRemoteUploadConfig): Promise<void> {
     this.config = config;
     this.socketAdapter = config.socketAdapter || null;
 
     if (config.enabled && this.socketAdapter) {
+      // Get device ID, user ID, and API URL from adapter
+      this.deviceId = await Promise.resolve(this.socketAdapter.getDeviceId());
+      this.userId = this.socketAdapter.getUserId 
+        ? await Promise.resolve(this.socketAdapter.getUserId()) 
+        : '';
+      this.apiUrl = this.socketAdapter.getApiUrl?.() || '';
+      this.channelName = `tis-mobile-upload-w-dev-${this.deviceId}`;
+
       // Subscribe to socket connection status
       this.socketAdapter.connectionStatus$
         .pipe(takeUntil(this.destroy$))
         .subscribe(connected => {
-          if (connected && this.pairingSession$.value?.status === 'connected') {
-            // Re-subscribe to channel on reconnection
-            this.subscribeToChannel(this.pairingSession$.value.channel);
+          if (connected) {
+            // Always subscribe to our channel when connected
+            this.subscribeToChannel(this.channelName);
           }
         });
 
-      // Auto-reconnect if pairing exists
-      if (config.pairing?.autoReconnect !== false) {
-        const session = this.pairingSession$.value;
-        if (session && session.status === 'connected' && !this.isSessionExpired(session)) {
-          this.subscribeToChannel(session.channel);
-        }
+      // Subscribe to channel immediately if already connected
+      if (this.socketAdapter.isConnected()) {
+        this.subscribeToChannel(this.channelName);
       }
+
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Configured:`, {
+        deviceId: this.deviceId,
+        userId: this.userId,
+        channel: this.channelName
+      });
     }
+  }
+
+  // ===========================================================================
+  // Public Getters
+  // ===========================================================================
+
+  /**
+   * Get desktop device ID
+   */
+  getDesktopDeviceId(): string {
+    return this.deviceId;
+  }
+
+  /**
+   * Get current mobile connection info
+   */
+  getMobileConnection(): Observable<MobileConnectionInfo | null> {
+    return this.mobileConnection$.asObservable();
+  }
+
+  /**
+   * Get current mobile device ID (if connected)
+   */
+  getMobileDeviceId(): string | null {
+    return this.mobileConnection$.value?.mobileDeviceId || null;
   }
 
   /**
@@ -104,166 +163,179 @@ export class TisRemoteUploadService implements OnDestroy {
   }
 
   /**
-   * Check if currently paired with a mobile device
+   * Check if currently connected to a mobile device
    */
-  isPaired(): boolean {
-    const session = this.pairingSession$.value;
-    return !!(session && session.status === 'connected' && !this.isSessionExpired(session));
+  isConnectedToMobile(): boolean {
+    return this.connectionStatus$.value === 'connected' && !!this.mobileConnection$.value;
   }
 
   /**
-   * Generate a new pairing code and QR data
+   * Alias for isConnectedToMobile - Check if paired with mobile
    */
-  async generatePairingCode(): Promise<{ qrData: string; pairingCode: string; expiresAt: number }> {
+  isPaired(): boolean {
+    return this.isConnectedToMobile();
+  }
+
+  // ===========================================================================
+  // QR Code Generation (New Flow)
+  // ===========================================================================
+
+  /**
+   * Generate QR code data for mobile app
+   * Flow:
+   * 1. Call API to get a short-lived link token (UUID)
+   * 2. Build QR URL with: apiUrl, deviceId, userId, token
+   */
+  async generateQrCode(): Promise<{ qrData: string; expiresAt: number }> {
     if (!this.isAvailable()) {
       throw new Error('Remote upload is not available. Check configuration and socket connection.');
     }
 
-    const deviceId = await this.getDeviceId();
-    const endpoint = this.config!.apiEndpoints?.generatePairingCode;
-
-    if (!endpoint) {
-      throw new Error('generatePairingCode endpoint not configured');
+    if (!this.apiUrl) {
+      throw new Error('API URL not configured in socket adapter');
     }
 
     try {
-      // Call API to generate pairing code
-      const response = await this.callApi<{
-        pairingCode: string;
-        channel: string;
-        expiresAt: number;
-      }>(endpoint, { deviceId });
+      // Step 1: Get link token from backend
+      const endpoint = this.config?.apiEndpoints?.generateMobileLinkToken 
+        || `${this.apiUrl}/ease-of-access/mobile-upload-link-token`;
+
+      const response = await this.callHttpApi<{ token: string; expiresAt: number }>(
+        endpoint, 
+        { deviceId: this.deviceId, userId: this.userId }
+      );
 
       const expirySeconds = this.config?.qrCode?.expirySeconds || DEFAULT_QR_EXPIRY;
       const expiresAt = response.expiresAt || Date.now() + expirySeconds * 1000;
 
-      // Create pairing session
+      // Step 2: Build QR URL
+      const mobileUrl = this.config?.qrCode?.mobileUploadUrl || '';
+      const qrData = this.buildQrUrl(mobileUrl, {
+        token: response.token,
+        deviceId: this.deviceId,
+        userId: this.userId,
+        apiUrl: this.apiUrl
+      });
+
+      // Update pairing session
       const session: TisPairingSession = {
-        pairingCode: response.pairingCode,
-        desktopDeviceId: deviceId,
-        channel: response.channel,
+        pairingCode: response.token,
+        desktopDeviceId: this.deviceId,
+        channel: this.channelName,
         createdAt: Date.now(),
         expiresAt,
         status: 'pending'
       };
-
-      // Save session
       this.pairingSession$.next(session);
-      this.saveSession(session);
       this.connectionStatus$.next('pending');
 
-      // Subscribe to the channel
-      this.subscribeToChannel(session.channel);
+      console.log(`[${TisRemoteUploadService.COMPONENT}] QR code generated, waiting for mobile...`);
 
-      // Generate QR data URL
-      const mobileUrl = this.config?.qrCode?.mobileUploadUrl || '';
-      const qrData = `${mobileUrl}?code=${response.pairingCode}&deviceId=${deviceId}`;
+      return { qrData, expiresAt };
 
-      return {
-        qrData,
-        pairingCode: response.pairingCode,
-        expiresAt
-      };
     } catch (error: any) {
-      this.error$.next(`Failed to generate pairing code: ${error.message}`);
+      const msg = `Failed to generate QR code: ${error.message}`;
+      console.error(`[${TisRemoteUploadService.COMPONENT}]`, msg);
+      this.error$.next(msg);
       throw error;
     }
   }
 
   /**
-   * Validate a pairing code (used by mobile app)
+   * Build QR URL with minimal parameters
    */
-  async validatePairingCode(pairingCode: string): Promise<{
-    valid: boolean;
-    desktopDeviceId?: string;
-    channel?: string;
-  }> {
-    const endpoint = this.config?.apiEndpoints?.validatePairingCode;
+  private buildQrUrl(
+    baseUrl: string,
+    params: { token: string; deviceId: string; userId: string; apiUrl: string }
+  ): string {
+    const url = new URL(baseUrl);
+    url.searchParams.set('token', params.token);
+    url.searchParams.set('deviceId', params.deviceId);
+    url.searchParams.set('userId', params.userId);
+    url.searchParams.set('apiUrl', encodeURIComponent(params.apiUrl));
+    return url.toString();
+  }
 
-    if (!endpoint) {
-      throw new Error('validatePairingCode endpoint not configured');
+  // ===========================================================================
+  // Mobile Communication
+  // ===========================================================================
+
+  /**
+   * Send message to mobile device
+   */
+  sendToMobile(type: string, data: any): void {
+    if (!this.socketAdapter?.sendViaSocket) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] sendViaSocket not available`);
+      return;
     }
 
-    try {
-      const response = await this.callApi<{
-        valid: boolean;
-        desktopDeviceId?: string;
-        channel?: string;
-      }>(endpoint, { pairingCode });
-
-      return response;
-    } catch (error: any) {
-      this.error$.next(`Failed to validate pairing code: ${error.message}`);
-      throw error;
-    }
+    this.socketAdapter.sendViaSocket({
+      action: this.channelName,
+      data: {
+        type,
+        ...data,
+        desktopDeviceId: this.deviceId,
+        timestamp: Date.now()
+      }
+    });
   }
 
   /**
-   * Disconnect and clear pairing
+   * Accept mobile connection (send SUCCESS response)
+   */
+  private acceptMobileConnection(mobileDeviceId: string): void {
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Accepting mobile connection:`, mobileDeviceId);
+
+    // Save mobile connection
+    const connectionInfo: MobileConnectionInfo = {
+      mobileDeviceId,
+      connectedAt: Date.now(),
+      lastActivity: Date.now()
+    };
+    this.mobileConnection$.next(connectionInfo);
+    this.saveMobileConnection(connectionInfo);
+
+    // Update status
+    this.connectionStatus$.next('connected');
+
+    // Update session
+    const session = this.pairingSession$.value;
+    if (session) {
+      const updatedSession: TisPairingSession = {
+        ...session,
+        mobileDeviceId,
+        status: 'connected',
+        lastActivity: Date.now()
+      };
+      this.pairingSession$.next(updatedSession);
+    }
+
+    // Send SUCCESS to mobile
+    this.sendToMobile('connectionState', { state: 'SUCCESS' });
+  }
+
+  /**
+   * Disconnect from mobile device
    */
   disconnect(): void {
-    const session = this.pairingSession$.value;
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Disconnecting from mobile...`);
 
-    if (session && this.channelSubscription) {
-      // Unsubscribe from channel
-      if (this.socketAdapter?.unsubscribeFromChannel) {
-        this.socketAdapter.unsubscribeFromChannel(session.channel);
-      }
-      this.channelSubscription.unsubscribe();
-      this.channelSubscription = null;
-    }
+    // Notify mobile
+    this.sendToMobile('connectionState', { state: 'DISCONNECTED' });
 
-    // Clear session
-    this.pairingSession$.next(null);
+    // Clear state
+    this.mobileConnection$.next(null);
     this.connectionStatus$.next('disconnected');
-    this.clearStoredSession();
+    this.pairingSession$.next(null);
+    this.clearMobileConnection();
   }
 
-  /**
-   * Notify desktop about uploaded file (called by mobile)
-   */
-  async notifyUpload(
-    channel: string,
-    uploadedFile: TisRemoteUploadedFile,
-    sessionId?: string
-  ): Promise<void> {
-    const endpoint = this.config?.apiEndpoints?.notifyUpload;
-    const deviceId = await this.getDeviceId();
-
-    const message: TisRemoteUploadMessage = {
-      type: 'upload_complete',
-      channel,
-      payload: {
-        file: uploadedFile,
-        sessionId
-      },
-      senderId: deviceId,
-      timestamp: Date.now()
-    };
-
-    if (endpoint) {
-      // Use HTTP API to notify
-      await this.callApi(endpoint, message);
-    } else if (this.socketAdapter?.callApi) {
-      // Use socket to notify directly
-      this.socketAdapter.callApi('remote-upload/notify', message);
-    }
-  }
+  // ===========================================================================
+  // Channel Subscription & Message Handling
+  // ===========================================================================
 
   /**
-   * Get device ID from socket adapter
-   */
-  private async getDeviceId(): Promise<string> {
-    if (!this.socketAdapter) {
-      throw new Error('Socket adapter not configured');
-    }
-
-    const deviceId = this.socketAdapter.getDeviceId();
-    return deviceId instanceof Promise ? await deviceId : deviceId;
-  }
-
-  /**
-   * Subscribe to a channel for receiving remote upload messages
+   * Subscribe to channel for receiving messages from mobile
    */
   private subscribeToChannel(channel: string): void {
     if (this.channelSubscription) {
@@ -274,79 +346,65 @@ export class TisRemoteUploadService implements OnDestroy {
       return;
     }
 
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Subscribing to channel:`, channel);
+
     this.channelSubscription = this.socketAdapter.subscribeToChannel(channel)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (message: TisRemoteUploadMessage | any) => {
-          this.handleChannelMessage(message);
-        },
+        next: (message: any) => this.handleChannelMessage(message),
         error: (error) => {
-          console.error('[TisRemoteUploadService] Channel subscription error:', error);
+          console.error(`[${TisRemoteUploadService.COMPONENT}] Channel error:`, error);
           this.error$.next(`Channel subscription error: ${error.message}`);
         }
       });
   }
 
   /**
-   * Handle incoming channel messages
+   * Handle incoming channel messages from mobile
    */
-  private handleChannelMessage(message: TisRemoteUploadMessage | any): void {
-    console.log('[TisRemoteUploadService] Received message:', message);
+  private handleChannelMessage(message: any): void {
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Received:`, message);
 
-    // Handle both wrapped and direct message formats
-    const msg = message.payload ? message : { type: message.type, payload: message };
+    // Extract message type and data
+    const type = message.type || message.data?.type;
+    const data = message.data || message.payload || message;
 
-    switch (msg.type || message.type) {
-      case 'pairing_accepted':
-        this.handlePairingAccepted(message);
+    switch (type) {
+      case 'connectionState':
+        this.handleConnectionState(data);
         break;
 
-      case 'upload_started':
-        console.log('[TisRemoteUploadService] Upload started from mobile');
-        break;
-
-      case 'upload_progress':
-        console.log('[TisRemoteUploadService] Upload progress:', message.payload?.progress);
-        break;
-
+      case 'image-uploaded':
       case 'upload_complete':
         this.handleUploadComplete(message);
         break;
 
-      case 'upload_error':
-        this.error$.next(`Remote upload error: ${message.payload?.error}`);
-        break;
-
       case 'disconnect':
-        this.handleMobileDisconnect(message);
+        this.handleMobileDisconnect(data);
         break;
 
       default:
-        // Try to handle as upload complete if it has file data
-        if (message.payload?.file || message.file) {
+        // Check if it's an upload event
+        if (data.file || data.fileName || data.fileUrl) {
           this.handleUploadComplete(message);
+        } else {
+          console.log(`[${TisRemoteUploadService.COMPONENT}] Unknown message type:`, type);
         }
     }
   }
 
   /**
-   * Handle pairing accepted from mobile
+   * Handle connection state messages from mobile
    */
-  private handlePairingAccepted(message: any): void {
-    const session = this.pairingSession$.value;
-    if (session) {
-      const updatedSession: TisPairingSession = {
-        ...session,
-        mobileDeviceId: message.senderId || message.payload?.mobileDeviceId,
-        status: 'connected',
-        lastActivity: Date.now()
-      };
+  private handleConnectionState(data: any): void {
+    const state = data.state || data.connectionState;
+    const mobileDeviceId = data.mobileDeviceId;
 
-      this.pairingSession$.next(updatedSession);
-      this.saveSession(updatedSession);
-      this.connectionStatus$.next('connected');
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Connection state:`, state, 'from:', mobileDeviceId);
 
-      console.log('[TisRemoteUploadService] Pairing accepted, mobile connected');
+    if (state === 'INITIATED' && mobileDeviceId) {
+      // Mobile is initiating connection - accept it
+      this.acceptMobileConnection(mobileDeviceId);
     }
   }
 
@@ -354,79 +412,109 @@ export class TisRemoteUploadService implements OnDestroy {
    * Handle upload complete from mobile
    */
   private handleUploadComplete(message: any): void {
-    const session = this.pairingSession$.value;
-    const file = message.payload?.file || message.file;
+    const data = message.data || message.payload || message;
+    const file = data.file || data;
 
     if (file) {
       const event: TisRemoteUploadEvent = {
         file,
-        mobileDeviceId: message.senderId || session?.mobileDeviceId || 'unknown',
-        timestamp: message.timestamp || Date.now(),
-        sessionId: message.payload?.sessionId
+        mobileDeviceId: data.mobileDeviceId || this.mobileConnection$.value?.mobileDeviceId || 'unknown',
+        timestamp: data.timestamp || Date.now(),
+        sessionId: data.sessionId
       };
 
       // Update last activity
-      if (session) {
-        const updatedSession = { ...session, lastActivity: Date.now() };
-        this.pairingSession$.next(updatedSession);
-        this.saveSession(updatedSession);
+      const conn = this.mobileConnection$.value;
+      if (conn) {
+        const updated = { ...conn, lastActivity: Date.now() };
+        this.mobileConnection$.next(updated);
+        this.saveMobileConnection(updated);
       }
 
       this.remoteUpload$.next(event);
-      console.log('[TisRemoteUploadService] Remote upload received:', event);
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Upload received:`, event);
     }
   }
 
   /**
    * Handle mobile disconnect
    */
-  private handleMobileDisconnect(message: any): void {
+  private handleMobileDisconnect(data: any): void {
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Mobile disconnected:`, data);
+    
+    this.mobileConnection$.next(null);
+    this.connectionStatus$.next('disconnected');
+    this.clearMobileConnection();
+
+    // Update session
     const session = this.pairingSession$.value;
     if (session) {
-      const updatedSession: TisPairingSession = {
+      this.pairingSession$.next({
         ...session,
         status: 'disconnected',
         lastActivity: Date.now()
-      };
+      });
+    }
+  }
 
-      this.pairingSession$.next(updatedSession);
-      this.saveSession(updatedSession);
-      this.connectionStatus$.next('disconnected');
+  // ===========================================================================
+  // Storage
+  // ===========================================================================
 
-      console.log('[TisRemoteUploadService] Mobile disconnected');
+  /**
+   * Save mobile connection to localStorage
+   */
+  private saveMobileConnection(info: MobileConnectionInfo): void {
+    try {
+      localStorage.setItem(
+        TisRemoteUploadService.MOBILE_CONNECTION_KEY, 
+        JSON.stringify(info)
+      );
+    } catch (e) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Failed to save connection:`, e);
     }
   }
 
   /**
-   * Call API endpoint
+   * Restore mobile connection from localStorage
    */
-  private callApi<T>(endpoint: string, data: any): Promise<T> {
-    // If socket adapter has callApi, prefer that for consistency
-    if (this.socketAdapter?.callApi) {
-      return new Promise((resolve, reject) => {
-        this.socketAdapter!.callApi!(endpoint, data)
-          .pipe(
-            take(1),
-            timeout(30000),
-            catchError(err => {
-              reject(err);
-              return throwError(() => err);
-            })
-          )
-          .subscribe({
-            next: (response: any) => {
-              if (response.status === 200 || response.statusCode === 200) {
-                resolve(response.payload || response.body || response);
-              } else {
-                reject(new Error(response.message || 'API call failed'));
-              }
-            },
-            error: reject
-          });
-      });
+  private restoreMobileConnection(): void {
+    try {
+      const stored = localStorage.getItem(TisRemoteUploadService.MOBILE_CONNECTION_KEY);
+      if (stored) {
+        const info: MobileConnectionInfo = JSON.parse(stored);
+        // Only restore if connected within last 24 hours
+        if (Date.now() - info.lastActivity < DEFAULT_PAIRING_TTL) {
+          this.mobileConnection$.next(info);
+          // Note: actual connection status will be updated when mobile reconnects
+        } else {
+          this.clearMobileConnection();
+        }
+      }
+    } catch (e) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Failed to restore connection:`, e);
     }
+  }
 
-    // Fallback to HTTP
+  /**
+   * Clear mobile connection from localStorage
+   */
+  private clearMobileConnection(): void {
+    try {
+      localStorage.removeItem(TisRemoteUploadService.MOBILE_CONNECTION_KEY);
+    } catch (e) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Failed to clear connection:`, e);
+    }
+  }
+
+  // ===========================================================================
+  // HTTP API
+  // ===========================================================================
+
+  /**
+   * Call HTTP API endpoint
+   */
+  private callHttpApi<T>(endpoint: string, data: any): Promise<T> {
     return new Promise((resolve, reject) => {
       this.http.post<T>(endpoint, data)
         .pipe(take(1), timeout(30000))
@@ -437,76 +525,9 @@ export class TisRemoteUploadService implements OnDestroy {
     });
   }
 
-  /**
-   * Check if session is expired
-   */
-  private isSessionExpired(session: TisPairingSession): boolean {
-    const pairingTTL = this.config?.pairing?.pairingTTL ?? DEFAULT_PAIRING_TTL;
-
-    if (pairingTTL === 0) {
-      // Session-only pairing - always valid until disconnect
-      return false;
-    }
-
-    return Date.now() > session.expiresAt;
-  }
-
-  /**
-   * Save session to localStorage
-   */
-  private saveSession(session: TisPairingSession): void {
-    if (this.config?.pairing?.persistInStorage === false) {
-      return;
-    }
-
-    try {
-      const storageKey = this.config?.pairing?.storageKey || DEFAULT_STORAGE_KEY;
-      localStorage.setItem(storageKey, JSON.stringify(session));
-    } catch (error) {
-      console.warn('[TisRemoteUploadService] Failed to save session to storage:', error);
-    }
-  }
-
-  /**
-   * Restore session from localStorage
-   */
-  private restoreSession(): void {
-    try {
-      const storageKey = this.config?.pairing?.storageKey || DEFAULT_STORAGE_KEY;
-      const stored = localStorage.getItem(storageKey);
-
-      if (stored) {
-        const session: TisPairingSession = JSON.parse(stored);
-
-        if (!this.isSessionExpired(session)) {
-          this.pairingSession$.next(session);
-
-          if (session.status === 'connected') {
-            this.connectionStatus$.next('connected');
-          } else if (session.status === 'pending') {
-            this.connectionStatus$.next('pending');
-          }
-        } else {
-          // Clear expired session
-          this.clearStoredSession();
-        }
-      }
-    } catch (error) {
-      console.warn('[TisRemoteUploadService] Failed to restore session from storage:', error);
-    }
-  }
-
-  /**
-   * Clear stored session
-   */
-  private clearStoredSession(): void {
-    try {
-      const storageKey = this.config?.pairing?.storageKey || DEFAULT_STORAGE_KEY;
-      localStorage.removeItem(storageKey);
-    } catch (error) {
-      console.warn('[TisRemoteUploadService] Failed to clear stored session:', error);
-    }
-  }
+  // ===========================================================================
+  // Cleanup
+  // ===========================================================================
 
   ngOnDestroy(): void {
     this.destroy$.next();

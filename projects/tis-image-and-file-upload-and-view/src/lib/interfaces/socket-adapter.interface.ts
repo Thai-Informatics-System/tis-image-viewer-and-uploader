@@ -29,14 +29,6 @@ export interface TisSocketAdapter {
   unsubscribeFromChannel?(channelName: string): void;
 
   /**
-   * Send a message via the socket connection
-   * @param action - The action/route to call
-   * @param data - The data payload to send
-   * @returns Observable of the response (optional)
-   */
-  callApi?(action: string, data: any): Observable<any>;
-
-  /**
    * Get unique device/browser ID for pairing
    * @returns Device ID string or Promise that resolves to device ID
    */
@@ -52,6 +44,42 @@ export interface TisSocketAdapter {
    * Observable that emits connection status changes
    */
   connectionStatus$: Observable<boolean>;
+
+  /**
+   * Get current auth token (for passing to mobile app)
+   * @returns Current access token or null
+   */
+  getAuthToken?(): string | null | Promise<string | null>;
+
+  /**
+   * Get current refresh token (for passing to mobile app)
+   * @returns Current refresh token or null
+   */
+  getRefreshToken?(): string | null | Promise<string | null>;
+
+  /**
+   * Get the WebSocket URL (for passing to mobile app)
+   * @returns WebSocket URL string
+   */
+  getSocketUrl?(): string;
+
+  /**
+   * Get the API base URL (for passing to mobile app)
+   * @returns API base URL string
+   */
+  getApiUrl?(): string;
+
+  /**
+   * Get the current user ID
+   * @returns User ID string
+   */
+  getUserId?(): string | Promise<string>;
+
+  /**
+   * Send a message directly via socket (for handshake and communication)
+   * @param message - The message to send { action: string, data: any }
+   */
+  sendViaSocket?(message: { action: string; data: any }): void;
 }
 
 /**
@@ -89,16 +117,23 @@ export interface TisRemoteUploadConfig {
  */
 export interface TisRemoteUploadApiEndpoints {
   /**
-   * Endpoint to generate a pairing code
+   * Endpoint to generate a mobile upload link token (UUID)
+   * POST request with deviceId, userId, returns { token, expiresAt }
+   * Default: {apiUrl}/ease-of-access/mobile-upload-link-token
+   */
+  generateMobileLinkToken?: string;
+
+  /**
+   * Endpoint to generate a pairing code (legacy)
    * POST request with deviceId, returns { pairingCode, channel, expiresAt }
    */
-  generatePairingCode: string;
+  generatePairingCode?: string;
 
   /**
    * Endpoint to validate a pairing code (used by mobile)
    * POST request with pairingCode, returns { valid, deviceId, channel }
    */
-  validatePairingCode: string;
+  validatePairingCode?: string;
 
   /**
    * Endpoint called by mobile after uploading to notify desktop

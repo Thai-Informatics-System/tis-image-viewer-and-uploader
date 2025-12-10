@@ -20,6 +20,9 @@
     "paths": {
       "tis-image-and-file-upload-and-view": [
         "./dist/tis-image-and-file-upload-and-view"
+      ],
+      "@servicemind.tis/tis-image-and-file-upload-and-view": [
+        "./dist/tis-image-and-file-upload-and-view"
       ]
     }
   },

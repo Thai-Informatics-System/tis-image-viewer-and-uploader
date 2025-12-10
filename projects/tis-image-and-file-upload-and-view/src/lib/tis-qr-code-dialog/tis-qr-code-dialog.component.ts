@@ -23,7 +23,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   @ViewChild('qrCanvas', { static: false }) qrCanvas!: ElementRef<HTMLCanvasElement>;
 
   qrData: string = '';
-  pairingCode: string = '';
   expiresAt: number = 0;
   remainingTime: string = '';
   
@@ -35,6 +34,10 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   connectionStatus: 'disconnected' | 'pending' | 'connected' = 'disconnected';
   uploadedFiles: TisRemoteUploadEvent[] = [];
 
+  // Device IDs
+  desktopDeviceId: string = '';
+  mobileDeviceId: string | null = null;
+
   private destroy$ = new Subject<void>();
   private countdownSubscription: Subscription | null = null;
 
@@ -45,8 +48,14 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.generateQrCode();
+    // Get desktop device ID
+    this.desktopDeviceId = this.remoteUploadService.getDesktopDeviceId();
+    
+    // Subscribe to events first
     this.subscribeToEvents();
+    
+    // Check if already connected to mobile
+    this.checkExistingConnection();
   }
 
   ngOnDestroy(): void {
@@ -57,14 +66,30 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Check if there's an existing mobile connection
+   */
+  private checkExistingConnection(): void {
+    this.mobileDeviceId = this.remoteUploadService.getMobileDeviceId();
+    
+    if (this.remoteUploadService.isConnectedToMobile()) {
+      this.isConnected = true;
+      this.connectionStatus = 'connected';
+      this.isLoading = false;
+    } else {
+      // No existing connection, generate QR code
+      this.generateQrCode();
+    }
+  }
+
   private async generateQrCode(): Promise<void> {
     this.isLoading = true;
     this.errorMessage = null;
+    this.isExpired = false;
 
     try {
-      const result = await this.remoteUploadService.generatePairingCode();
+      const result = await this.remoteUploadService.generateQrCode();
       this.qrData = result.qrData;
-      this.pairingCode = result.pairingCode;
       this.expiresAt = result.expiresAt;
 
       this.isLoading = false;
@@ -85,6 +110,13 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       .subscribe(status => {
         this.connectionStatus = status;
         this.isConnected = status === 'connected';
+      });
+
+    // Mobile connection changes
+    this.remoteUploadService.getMobileConnection()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(connection => {
+        this.mobileDeviceId = connection?.mobileDeviceId || null;
       });
 
     // Remote uploads
@@ -140,8 +172,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
     canvas.width = size;
     canvas.height = size;
 
-    // Use a QR code generation library or simple placeholder
-    // For now, we'll create a simple visual that can be replaced with actual QR library
     this.generateQrCodeOnCanvas(ctx, this.qrData, size);
   }
 
@@ -150,17 +180,12 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
    * In production, you'd use a library like qrcode or qrcode-generator
    */
   private generateQrCodeOnCanvas(ctx: CanvasRenderingContext2D, data: string, size: number): void {
-    // This is a simplified QR-like pattern generator
-    // Replace with actual QR code library for production
-    
-    const moduleCount = 25; // Standard QR code size
+    const moduleCount = 25;
     const moduleSize = size / moduleCount;
 
-    // Clear canvas
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, size, size);
 
-    // Generate pattern based on data hash
     const pattern = this.generatePattern(data, moduleCount);
 
     ctx.fillStyle = '#000000';
@@ -177,7 +202,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Draw finder patterns (corners)
     this.drawFinderPattern(ctx, 0, 0, moduleSize);
     this.drawFinderPattern(ctx, (moduleCount - 7) * moduleSize, 0, moduleSize);
     this.drawFinderPattern(ctx, 0, (moduleCount - 7) * moduleSize, moduleSize);
@@ -186,7 +210,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   private generatePattern(data: string, size: number): boolean[][] {
     const pattern: boolean[][] = [];
     
-    // Simple hash-based pattern generation
     let hash = 0;
     for (let i = 0; i < data.length; i++) {
       hash = ((hash << 5) - hash) + data.charCodeAt(i);
@@ -199,7 +222,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
     for (let row = 0; row < size; row++) {
       pattern[row] = [];
       for (let col = 0; col < size; col++) {
-        // Skip finder pattern areas
         if (
           (row < 8 && col < 8) ||
           (row < 8 && col >= size - 8) ||
@@ -219,40 +241,64 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   private drawFinderPattern(ctx: CanvasRenderingContext2D, x: number, y: number, moduleSize: number): void {
     const s = moduleSize;
 
-    // Outer black square (7x7)
     ctx.fillStyle = '#000000';
     ctx.fillRect(x, y, 7 * s, 7 * s);
 
-    // White square (5x5)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(x + s, y + s, 5 * s, 5 * s);
 
-    // Inner black square (3x3)
     ctx.fillStyle = '#000000';
     ctx.fillRect(x + 2 * s, y + 2 * s, 3 * s, 3 * s);
   }
 
+  // ---------------------------------------------------------------------------
+  // Public Methods
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Format device ID for display
+   */
+  formatDeviceId(id: string | null): string {
+    if (!id) return '---';
+    if (id.length > 16) {
+      return `${id.slice(0, 8)}...${id.slice(-4)}`;
+    }
+    return id;
+  }
+
+  /**
+   * Refresh QR code
+   */
   refreshQrCode(): void {
     this.isExpired = false;
     this.uploadedFiles = [];
     this.generateQrCode();
   }
 
-  disconnect(): void {
-    this.remoteUploadService.disconnect();
-    this.dialogRef.close({ disconnected: true });
+  /**
+   * Connect to mobile (show QR if disconnected)
+   */
+  connectToMobile(): void {
+    this.generateQrCode();
   }
 
+  /**
+   * Disconnect from mobile
+   */
+  disconnect(): void {
+    this.remoteUploadService.disconnect();
+    this.mobileDeviceId = null;
+    this.isConnected = false;
+    this.connectionStatus = 'disconnected';
+  }
+
+  /**
+   * Close dialog
+   */
   close(): void {
     this.dialogRef.close({ 
       uploaded: this.uploadedFiles.length > 0, 
       files: this.uploadedFiles 
     });
-  }
-
-  copyPairingCode(): void {
-    if (navigator.clipboard && this.pairingCode) {
-      navigator.clipboard.writeText(this.pairingCode);
-    }
   }
 }

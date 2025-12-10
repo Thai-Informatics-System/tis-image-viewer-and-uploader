@@ -1,242 +1,184 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpEventType } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subject, throwError } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { Injectable, inject, signal, computed } from '@angular/core';
+import { MobileSocketService } from './mobile-socket.service';
 
-export interface PairingInfo {
-  valid: boolean;
-  desktopDeviceId: string;
-  channel: string;
-  entityType?: string;
-  entityId?: string;
-  accept?: string;
-  maxFiles?: number;
-}
+// ============================================================================
+// Types & Interfaces
+// ============================================================================
 
-export interface UploadedFile {
+/**
+ * Structure of uploaded file data from the library
+ */
+export interface UploadedFileData {
   s3Url: string;
-  fileName: string;
-  mimeType: string;
-  size: number;
-  thumbnailUrl?: string;
-  uploadData?: any;
+  tempId?: string;
+  title?: string;
+  name?: string;
+  filename?: string;
+  s3Path?: string;
+  id?: any;
+  uploadData?: {
+    uploadURL?: string;
+    photoFilename?: string;
+    fileName?: string;
+    uploadPath?: string;
+    resourceUrl?: string;
+  };
+  tags?: any;
+  sequence?: number;
 }
 
-export interface UploadProgress {
-  file: File;
-  progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'error';
-  result?: UploadedFile;
-  error?: string;
+/**
+ * Message sent to desktop when file is uploaded
+ */
+export interface FileUploadedMessage {
+  type: 'file-uploaded';
+  files: UploadedFileData[];
+  totalCount: number;
+  uploadedAt: number;
+  mobileDeviceId: string;
 }
 
+// ============================================================================
+// Service
+// ============================================================================
+
+/**
+ * Simplified Mobile Upload Service
+ * 
+ * This service only handles sending uploaded file data to the desktop.
+ * The actual upload is handled by the TisImageAndFileUploadAndView library component.
+ * 
+ * Flow:
+ * 1. Mobile uses <tis-image-and-file-upload-and-view> component for upload
+ * 2. Library handles presigned URL generation and S3 upload
+ * 3. When library emits (onUploaded), this service sends the data to desktop
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class MobileUploadService {
-  private pairingInfo$ = new BehaviorSubject<PairingInfo | null>(null);
-  private uploadProgress$ = new Subject<UploadProgress>();
+  private readonly socketService = inject(MobileSocketService);
 
-  constructor(private http: HttpClient) {}
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
 
-  /**
-   * Validate pairing code and get connection info
-   */
-  validatePairingCode(code: string, deviceId?: string): Observable<PairingInfo> {
-    return this.http.post<PairingInfo>(`${environment.apiUrl}/remote-upload/validate-code`, {
-      pairingCode: code,
-      mobileDeviceId: deviceId || this.generateDeviceId()
-    }).pipe(
-      tap(info => {
-        if (info.valid) {
-          this.pairingInfo$.next(info);
-          this.storePairingInfo(info);
-        }
-      }),
-      catchError(err => {
-        console.error('[MobileUploadService] Validation error:', err);
-        return throwError(() => new Error(err.error?.message || 'Failed to validate pairing code'));
-      })
-    );
-  }
+  private readonly _uploadedFiles = signal<UploadedFileData[]>([]);
+  private readonly _lastSentAt = signal<number | null>(null);
+  private readonly _sendError = signal<string | null>(null);
 
-  /**
-   * Get presigned URL for upload
-   */
-  getUploadUrl(fileName: string, contentType: string, entityType?: string): Observable<any> {
-    const pairing = this.pairingInfo$.value;
-    
-    return this.http.post(`${environment.apiUrl}/upload/presigned-url`, {
-      fileName,
-      contentType,
-      entityType: entityType || pairing?.entityType || 'mobile-upload',
-      channel: pairing?.channel
-    });
-  }
+  // ---------------------------------------------------------------------------
+  // Public Signals (readonly)
+  // ---------------------------------------------------------------------------
+
+  readonly uploadedFiles = this._uploadedFiles.asReadonly();
+  readonly lastSentAt = this._lastSentAt.asReadonly();
+  readonly sendError = this._sendError.asReadonly();
+  
+  readonly totalUploaded = computed(() => this._uploadedFiles().length);
+  readonly hasUploads = computed(() => this._uploadedFiles().length > 0);
+
+  // ---------------------------------------------------------------------------
+  // Send to Desktop
+  // ---------------------------------------------------------------------------
 
   /**
-   * Upload file to presigned URL
+   * Send uploaded file data to desktop
+   * Called when the library's onUploaded event fires
+   * 
+   * @param uploadedData - The data from library's onUploaded event
    */
-  uploadToPresignedUrl(presignedUrl: string, file: File): Observable<number> {
-    return new Observable(observer => {
-      const xhr = new XMLHttpRequest();
+  sendToDesktop(uploadedData: any): void {
+    try {
+      // Normalize the data (library can emit single file or array)
+      const files = this.normalizeUploadedData(uploadedData);
       
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          observer.next(progress);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          observer.next(100);
-          observer.complete();
-        } else {
-          observer.error(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        observer.error(new Error('Upload failed'));
-      });
-
-      xhr.open('PUT', presignedUrl);
-      xhr.setRequestHeader('Content-Type', file.type);
-      xhr.send(file);
-    });
-  }
-
-  /**
-   * Notify desktop about uploaded file
-   */
-  notifyDesktop(uploadedFile: UploadedFile, sessionId?: string): Observable<any> {
-    const pairing = this.pairingInfo$.value;
-    
-    if (!pairing) {
-      return throwError(() => new Error('Not paired with desktop'));
-    }
-
-    return this.http.post(`${environment.apiUrl}/remote-upload/notify`, {
-      channel: pairing.channel,
-      desktopDeviceId: pairing.desktopDeviceId,
-      mobileDeviceId: this.getDeviceId(),
-      file: uploadedFile,
-      sessionId,
-      timestamp: Date.now()
-    });
-  }
-
-  /**
-   * Complete upload flow: get presigned URL, upload, notify desktop
-   */
-  async uploadFile(file: File, onProgress?: (progress: number) => void): Promise<UploadedFile> {
-    // 1. Get presigned URL
-    const urlResponse = await this.getUploadUrl(file.name, file.type).toPromise();
-    
-    // 2. Upload to presigned URL
-    await new Promise<void>((resolve, reject) => {
-      this.uploadToPresignedUrl(urlResponse.uploadURL, file).subscribe({
-        next: (progress) => {
-          if (onProgress) onProgress(progress);
-        },
-        error: reject,
-        complete: resolve
-      });
-    });
-
-    // 3. Create uploaded file info
-    const uploadedFile: UploadedFile = {
-      s3Url: urlResponse.resourceUrl,
-      fileName: file.name,
-      mimeType: file.type,
-      size: file.size,
-      uploadData: urlResponse
-    };
-
-    // 4. Notify desktop
-    await this.notifyDesktop(uploadedFile).toPromise();
-
-    return uploadedFile;
-  }
-
-  /**
-   * Get current pairing info
-   */
-  getPairingInfo(): Observable<PairingInfo | null> {
-    return this.pairingInfo$.asObservable();
-  }
-
-  /**
-   * Get upload progress events
-   */
-  getUploadProgress(): Observable<UploadProgress> {
-    return this.uploadProgress$.asObservable();
-  }
-
-  /**
-   * Check if paired
-   */
-  isPaired(): boolean {
-    return this.pairingInfo$.value !== null;
-  }
-
-  /**
-   * Clear pairing
-   */
-  disconnect(): void {
-    this.pairingInfo$.next(null);
-    this.clearStoredPairing();
-  }
-
-  /**
-   * Generate a unique device ID
-   */
-  private generateDeviceId(): string {
-    let deviceId = localStorage.getItem('tis-mobile-device-id');
-    if (!deviceId) {
-      deviceId = 'mobile-' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      localStorage.setItem('tis-mobile-device-id', deviceId);
-    }
-    return deviceId;
-  }
-
-  /**
-   * Get device ID
-   */
-  getDeviceId(): string {
-    return localStorage.getItem('tis-mobile-device-id') || this.generateDeviceId();
-  }
-
-  /**
-   * Store pairing info in session storage
-   */
-  private storePairingInfo(info: PairingInfo): void {
-    sessionStorage.setItem('tis-mobile-pairing', JSON.stringify(info));
-  }
-
-  /**
-   * Load stored pairing info
-   */
-  loadStoredPairing(): PairingInfo | null {
-    const stored = sessionStorage.getItem('tis-mobile-pairing');
-    if (stored) {
-      try {
-        const info = JSON.parse(stored);
-        this.pairingInfo$.next(info);
-        return info;
-      } catch (e) {
-        return null;
+      if (files.length === 0) {
+        console.warn('[MobileUploadService] No files to send');
+        return;
       }
+
+      // Store locally
+      this._uploadedFiles.update(current => [...current, ...files]);
+
+      // Send to desktop via socket
+      this.socketService.sendToDesktop('file-uploaded', {
+        files,
+        totalCount: files.length,
+        uploadedAt: Date.now()
+      });
+
+      this._lastSentAt.set(Date.now());
+      this._sendError.set(null);
+
+      console.log('[MobileUploadService] Sent to desktop:', files);
+
+    } catch (error: any) {
+      console.error('[MobileUploadService] Failed to send to desktop:', error);
+      this._sendError.set(error.message || 'Failed to send to desktop');
     }
-    return null;
   }
 
   /**
-   * Clear stored pairing
+   * Normalize uploaded data from library
+   * The library can emit data in different formats
    */
-  private clearStoredPairing(): void {
-    sessionStorage.removeItem('tis-mobile-pairing');
+  private normalizeUploadedData(data: any): UploadedFileData[] {
+    if (!data) return [];
+
+    // If it's already an array
+    if (Array.isArray(data)) {
+      return data.map(item => this.extractFileData(item)).filter(Boolean) as UploadedFileData[];
+    }
+
+    // Single file object
+    const fileData = this.extractFileData(data);
+    return fileData ? [fileData] : [];
+  }
+
+  /**
+   * Extract relevant file data from various formats
+   */
+  private extractFileData(item: any): UploadedFileData | null {
+    if (!item) return null;
+
+    // Handle different response structures
+    return {
+      s3Url: item.s3Url || item.tempS3Url || item.uploadData?.resourceUrl || item.resourceUrl || item.url,
+      tempId: item.tempId,
+      title: item.title || item.name || item.filename,
+      name: item.name || item.title,
+      filename: item.filename || item.name,
+      s3Path: item.s3Path || item.uploadData?.uploadPath,
+      id: item.id,
+      uploadData: item.uploadData ? {
+        uploadURL: item.uploadData.uploadURL,
+        photoFilename: item.uploadData.photoFilename,
+        fileName: item.uploadData.fileName,
+        uploadPath: item.uploadData.uploadPath,
+        resourceUrl: item.uploadData.resourceUrl
+      } : undefined,
+      tags: item.tags,
+      sequence: item.sequence
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Utility Methods
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Clear all uploaded files from local state
+   */
+  clearUploads(): void {
+    this._uploadedFiles.set([]);
+    this._sendError.set(null);
+  }
+
+  /**
+   * Check if socket is connected
+   */
+  isConnected(): boolean {
+    return this.socketService.isConnected();
   }
 }

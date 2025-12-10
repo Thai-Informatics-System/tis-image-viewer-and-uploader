@@ -1,22 +1,17 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, takeUntil } from 'rxjs';
-import { MobileUploadService, UploadedFile, PairingInfo } from '../../services/mobile-upload.service';
 
-interface FileUploadState {
-  file: File;
-  preview?: string;
-  progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'error';
-  result?: UploadedFile;
-  error?: string;
-}
+import { TisImageAndFileUploadAndViewModule } from '@servicemind.tis/tis-image-and-file-upload-and-view';
+import type { UrlConfig, OptionConfig } from '@servicemind.tis/tis-image-and-file-upload-and-view';
+
+import { MobileSocketService, QrCodeParams, ConnectionStatus, DesktopMessage } from '../../services/mobile-socket.service';
+import { MobileUploadService } from '../../services/mobile-upload.service';
 
 @Component({
   selector: 'app-upload',
@@ -26,258 +21,341 @@ interface FileUploadState {
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    MatProgressBarModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    TisImageAndFileUploadAndViewModule
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss']
 })
 export class UploadComponent implements OnInit, OnDestroy {
-  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('cameraInput') cameraInput!: ElementRef<HTMLInputElement>;
+  private readonly router = inject(Router);
+  private readonly socketService = inject(MobileSocketService);
+  private readonly uploadService = inject(MobileUploadService);
+  private readonly snackBar = inject(MatSnackBar);
 
   private destroy$ = new Subject<void>();
 
-  // State
-  isValidating = true;
-  isValid = false;
-  errorMessage: string | null = null;
-  pairingInfo: PairingInfo | null = null;
+  // -------------------------------------------------------------------------
+  // State Signals
+  // -------------------------------------------------------------------------
+  
+  // Initialization state
+  readonly isInitializing = signal(true);
+  readonly initError = signal<string | null>(null);
+  
+  // Connection state
+  readonly connectionStatus = signal<ConnectionStatus>('disconnected');
+  
+  // Device IDs
+  readonly mobileDeviceId = signal<string>('');
+  readonly desktopDeviceId = signal<string>('');
+  
+  // API URL from QR params (used for library urlConfig)
+  readonly apiUrl = signal<string>('');
+  
+  // Desktop info received via socket (field configuration)
+  readonly desktopFieldInfo = signal<DesktopFieldInfo | null>(null);
+  
+  // Computed states
+  readonly isConnected = computed(() => this.connectionStatus() === 'connected');
+  readonly isReady = computed(() => this.isConnected() && !this.isInitializing() && !!this.apiUrl());
 
-  // Upload state
-  uploadQueue: FileUploadState[] = [];
-  isUploading = false;
-  totalUploaded = 0;
+  // Upload tracking from service
+  readonly totalUploaded = this.uploadService.totalUploaded;
+  readonly hasUploads = this.uploadService.hasUploads;
 
-  // Params from QR code
-  pairingCode: string | null = null;
-  desktopDeviceId: string | null = null;
+  // -------------------------------------------------------------------------
+  // Library Configuration (computed)
+  // -------------------------------------------------------------------------
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private uploadService: MobileUploadService,
-    private snackBar: MatSnackBar
-  ) {}
+  /**
+   * URL configuration for the library
+   * Uses apiUrl from QR params as base
+   */
+  readonly urlConfig = computed<UrlConfig>(() => {
+    const base = this.apiUrl();
+    if (!base) {
+      return {
+        getUploadUrl: '',
+        attachToEntity: null,
+        updateTag: null,
+        updateSequence: null,
+        removeImage: ''
+      };
+    }
+
+    return {
+      getUploadUrl: `${base}/file-upload/getUploadUrl`,
+      attachToEntity: `${base}/file-upload/attachToEntity`,
+      updateTag: `${base}/file-upload/updateTag`,
+      updateSequence: `${base}/file-upload/updateSequence`,
+      removeImage: `${base}/file-upload/remove`
+    };
+  });
+
+  /**
+   * Options configuration for the library
+   */
+  readonly options = computed<OptionConfig>(() => {
+    const fieldInfo = this.desktopFieldInfo();
+    return {
+      selectorId: `mobile-upload-${this.mobileDeviceId() || 'default'}`,
+      isMultiple: fieldInfo?.isMultiple ?? true,
+      limit: fieldInfo?.limit ?? 10,
+      isCompressed: fieldInfo?.isCompressed ?? true,
+      hiddenDeleteBtn: false,
+      hiddenPreview: false
+    };
+  });
+
+  /**
+   * Accept types for the library
+   */
+  readonly acceptTypes = computed(() => {
+    const fieldInfo = this.desktopFieldInfo();
+    return fieldInfo?.accept || '.png,.jpeg,.jpg,.pdf';
+  });
+
+  /**
+   * Upload type (image or file)
+   */
+  readonly uploadType = computed<'image' | 'file'>(() => {
+    const fieldInfo = this.desktopFieldInfo();
+    return fieldInfo?.type || 'image';
+  });
+
+  /**
+   * Entity type for upload
+   */
+  readonly entityType = computed(() => {
+    const fieldInfo = this.desktopFieldInfo();
+    return fieldInfo?.entityType || 'mobile_upload';
+  });
+
+  constructor() {
+    // Effect to watch connection status changes
+    effect(() => {
+      const status = this.connectionStatus();
+      if (status === 'disconnected' && !this.isInitializing()) {
+        this.snackBar.open('Connection lost. Reconnecting...', '', { duration: 2000 });
+      }
+    });
+  }
 
   ngOnInit(): void {
-    // Get params from URL (from QR code)
-    this.route.queryParams
+    // Subscribe to socket connection status
+    this.socketService.connectionStatus$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        this.pairingCode = params['code'];
-        this.desktopDeviceId = params['deviceId'];
-
-        if (this.pairingCode) {
-          this.validatePairing();
-        } else {
-          // Try to load stored pairing
-          const stored = this.uploadService.loadStoredPairing();
-          if (stored) {
-            this.isValidating = false;
-            this.isValid = true;
-            this.pairingInfo = stored;
-          } else {
-            this.isValidating = false;
-            this.errorMessage = 'No pairing code provided. Please scan the QR code again.';
-          }
-        }
+      .subscribe(status => {
+        this.connectionStatus.set(status);
       });
+
+    // Subscribe to desktop messages
+    this.socketService.desktopMessages$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(message => this.handleDesktopMessage(message));
+
+    // Initialize from URL params or stored session
+    this.initializeFromUrl();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-
-    // Cleanup previews
-    this.uploadQueue.forEach(item => {
-      if (item.preview) {
-        URL.revokeObjectURL(item.preview);
-      }
-    });
   }
 
-  validatePairing(): void {
-    if (!this.pairingCode) return;
+  // -------------------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------------------
 
-    this.isValidating = true;
-    this.errorMessage = null;
+  private async initializeFromUrl(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    
+    const token = params.get('token');
+    const deviceId = params.get('deviceId');
+    const userId = params.get('userId');
+    const apiUrl = params.get('apiUrl');
 
-    this.uploadService.validatePairingCode(this.pairingCode)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (info) => {
-          this.isValidating = false;
-          if (info.valid) {
-            this.isValid = true;
-            this.pairingInfo = info;
-          } else {
-            this.errorMessage = 'Invalid or expired pairing code. Please try again.';
-          }
-        },
-        error: (err) => {
-          this.isValidating = false;
-          this.errorMessage = err.message || 'Failed to validate pairing code.';
-        }
+    // Decode apiUrl if present
+    const decodedApiUrl = apiUrl ? decodeURIComponent(apiUrl) : null;
+
+    // Check if we have QR params
+    if (token && deviceId && userId && decodedApiUrl) {
+      await this.initializeConnection({
+        token,
+        deviceId,
+        userId,
+        apiUrl: decodedApiUrl
       });
-  }
-
-  openFilePicker(): void {
-    this.fileInput?.nativeElement?.click();
-  }
-
-  openCamera(): void {
-    this.cameraInput?.nativeElement?.click();
-  }
-
-  onFilesSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const files = input.files;
-
-    if (files && files.length > 0) {
-      this.addFilesToQueue(Array.from(files));
-    }
-
-    // Reset input
-    input.value = '';
-  }
-
-  private addFilesToQueue(files: File[]): void {
-    const maxFiles = this.pairingInfo?.maxFiles || 10;
-    const remaining = maxFiles - this.uploadQueue.length;
-
-    if (remaining <= 0) {
-      this.snackBar.open(`Maximum ${maxFiles} files allowed`, 'OK', { duration: 3000 });
       return;
     }
 
-    const filesToAdd = files.slice(0, remaining);
-
-    filesToAdd.forEach(file => {
-      const state: FileUploadState = {
-        file,
-        progress: 0,
-        status: 'pending'
-      };
-
-      // Generate preview for images
-      if (file.type.startsWith('image/')) {
-        state.preview = URL.createObjectURL(file);
-      }
-
-      this.uploadQueue.push(state);
-    });
-
-    // Auto-start upload
-    if (!this.isUploading) {
-      this.processUploadQueue();
-    }
-  }
-
-  removeFile(index: number): void {
-    const item = this.uploadQueue[index];
-    
-    if (item.status === 'uploading') {
-      return; // Can't remove while uploading
-    }
-
-    if (item.preview) {
-      URL.revokeObjectURL(item.preview);
-    }
-
-    this.uploadQueue.splice(index, 1);
-  }
-
-  retryUpload(index: number): void {
-    const item = this.uploadQueue[index];
-    item.status = 'pending';
-    item.progress = 0;
-    item.error = undefined;
-
-    if (!this.isUploading) {
-      this.processUploadQueue();
-    }
-  }
-
-  private async processUploadQueue(): Promise<void> {
-    this.isUploading = true;
-
-    for (const item of this.uploadQueue) {
-      if (item.status !== 'pending') continue;
-
-      item.status = 'uploading';
-
+    // Try to restore from stored session
+    if (this.socketService.hasStoredSession()) {
       try {
-        const result = await this.uploadService.uploadFile(
-          item.file,
-          (progress) => {
-            item.progress = progress;
-          }
-        );
-
-        item.status = 'complete';
-        item.result = result;
-        this.totalUploaded++;
-
-        this.snackBar.open(`Uploaded: ${item.file.name}`, 'OK', { duration: 2000 });
+        this.isInitializing.set(true);
+        this.initError.set(null);
+        
+        await this.socketService.retryFromStoredSession();
+        
+        this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
+        this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
+        this.apiUrl.set(this.socketService.getApiUrl());
+        this.isInitializing.set(false);
+        this.snackBar.open('Reconnected to desktop!', '', { duration: 2000 });
+        return;
       } catch (error: any) {
-        item.status = 'error';
-        item.error = error.message || 'Upload failed';
-        console.error('[Upload] Error:', error);
+        console.error('[UploadComponent] Session restore failed:', error);
+        // Fall through to show error
       }
     }
 
-    this.isUploading = false;
+    // No params and no stored session
+    this.isInitializing.set(false);
+    this.initError.set('Please scan the QR code from the desktop app to connect.');
+  }
 
-    // Check if all done
-    const allComplete = this.uploadQueue.every(i => i.status === 'complete');
-    if (allComplete && this.uploadQueue.length > 0) {
-      this.showSuccessMessage();
+  private async initializeConnection(params: QrCodeParams): Promise<void> {
+    this.isInitializing.set(true);
+    this.initError.set(null);
+
+    try {
+      await this.socketService.initialize(params);
+      
+      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
+      this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
+      this.apiUrl.set(params.apiUrl);
+      this.isInitializing.set(false);
+      this.snackBar.open('Connected to desktop!', '', { duration: 2000 });
+
+    } catch (error: any) {
+      console.error('[UploadComponent] Initialization failed:', error);
+      this.isInitializing.set(false);
+      this.initError.set(error.message || 'Failed to connect. Please scan a new QR code.');
     }
   }
 
-  private showSuccessMessage(): void {
-    this.snackBar.open(
-      `Successfully uploaded ${this.totalUploaded} file(s) to desktop`,
-      'Done',
-      { duration: 5000 }
-    );
+  // -------------------------------------------------------------------------
+  // Desktop Message Handling
+  // -------------------------------------------------------------------------
+
+  private handleDesktopMessage(message: DesktopMessage): void {
+    if (!message) return;
+
+    console.log('[UploadComponent] Desktop message:', message);
+
+    switch (message.type) {
+      case 'connectionState':
+        if (message.state === 'DISCONNECTED' || message.connectionState === 'DISCONNECTED') {
+          this.snackBar.open('Disconnected by desktop', '', { duration: 3000 });
+          this.connectionStatus.set('disconnected');
+        }
+        break;
+
+      case 'field-info':
+        // Desktop sends field configuration when user selects an upload field
+        this.desktopFieldInfo.set({
+          label: message['label'],
+          accept: message['accept'],
+          type: message['fieldType'] || 'image',
+          entityType: message['entityType'],
+          entityId: message['entityId'],
+          isMultiple: message['isMultiple'],
+          limit: message['limit'],
+          isCompressed: message['isCompressed']
+        });
+        if (message['label']) {
+          this.snackBar.open(`Ready to upload: ${message['label']}`, '', { duration: 3000 });
+        }
+        break;
+
+      case 'session-ended':
+        this.snackBar.open('Session ended by desktop', '', { duration: 3000 });
+        this.router.navigate(['/error'], { queryParams: { type: 'session-expired' } });
+        break;
+
+      case 'file-received':
+      case 'image-received':
+        this.snackBar.open('File received on desktop!', '', { duration: 2000 });
+        break;
+    }
   }
 
-  getFileIcon(file: File): string {
-    if (file.type.startsWith('image/')) return 'image';
-    if (file.type.startsWith('video/')) return 'videocam';
-    if (file.type === 'application/pdf') return 'picture_as_pdf';
-    if (file.type.includes('spreadsheet') || file.type.includes('excel')) return 'table_chart';
-    if (file.type.includes('document') || file.type.includes('word')) return 'description';
-    return 'insert_drive_file';
+  // -------------------------------------------------------------------------
+  // Library Event Handlers
+  // -------------------------------------------------------------------------
+
+  /**
+   * Called when library successfully uploads a file
+   * Send the upload data to desktop via socket
+   */
+  onUploaded(event: any): void {
+    console.log('[UploadComponent] File uploaded:', event);
+    
+    // Send to desktop via socket
+    this.uploadService.sendToDesktop(event);
+    
+    this.snackBar.open('File sent to desktop!', '', { duration: 2000 });
   }
 
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  /**
+   * Called when upload is in progress
+   */
+  onUploadInProgress(event: any): void {
+    console.log('[UploadComponent] Upload in progress:', event);
   }
 
-  get pendingCount(): number {
-    return this.uploadQueue.filter(i => i.status === 'pending').length;
+  /**
+   * Called when there's an upload error
+   */
+  onError(event: any): void {
+    console.error('[UploadComponent] Upload error:', event);
+    this.snackBar.open('Upload failed. Please try again.', '', { duration: 3000 });
   }
 
-  get completedCount(): number {
-    return this.uploadQueue.filter(i => i.status === 'complete').length;
-  }
+  // -------------------------------------------------------------------------
+  // Actions
+  // -------------------------------------------------------------------------
 
-  get errorCount(): number {
-    return this.uploadQueue.filter(i => i.status === 'error').length;
+  retryConnection(): void {
+    this.initializeFromUrl();
   }
 
   disconnect(): void {
-    this.uploadService.disconnect();
-    this.isValid = false;
-    this.pairingInfo = null;
-    this.uploadQueue = [];
-    this.totalUploaded = 0;
+    this.socketService.disconnect();
+    this.uploadService.clearUploads();
+    this.connectionStatus.set('disconnected');
+    this.mobileDeviceId.set('');
+    this.desktopDeviceId.set('');
+    this.apiUrl.set('');
+    this.desktopFieldInfo.set(null);
   }
+
+  // -------------------------------------------------------------------------
+  // Utility Methods
+  // -------------------------------------------------------------------------
+
+  formatDeviceId(id: string): string {
+    if (!id) return '---';
+    // Show first 8 and last 4 characters
+    if (id.length > 16) {
+      return `${id.slice(0, 8)}...${id.slice(-4)}`;
+    }
+    return id;
+  }
+}
+
+// -------------------------------------------------------------------------
+// Types
+// -------------------------------------------------------------------------
+
+interface DesktopFieldInfo {
+  label?: string;
+  accept?: string;
+  type?: 'image' | 'file';
+  entityType?: string;
+  entityId?: any;
+  isMultiple?: boolean;
+  limit?: number;
+  isCompressed?: boolean;
 }

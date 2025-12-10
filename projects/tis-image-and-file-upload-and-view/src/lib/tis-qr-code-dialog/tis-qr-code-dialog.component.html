@@ -25,61 +25,85 @@
       </button>
     </div>
 
-    <!-- QR Code Display -->
+    <!-- Main Content -->
     <div *ngIf="!isLoading && !errorMessage" class="qr-content">
-      <!-- Connection Status -->
-      <div class="connection-status" [ngClass]="connectionStatus">
-        <div class="status-indicator"></div>
-        <span *ngIf="connectionStatus === 'disconnected'">Waiting for mobile...</span>
-        <span *ngIf="connectionStatus === 'pending'">Waiting for connection...</span>
-        <span *ngIf="connectionStatus === 'connected'">Mobile connected!</span>
-      </div>
-
-      <!-- QR Code -->
-      <div class="qr-code-wrapper" [class.expired]="isExpired" [class.connected]="isConnected">
-        <canvas #qrCanvas class="qr-canvas"></canvas>
+      
+      <!-- Device Info Card -->
+      <div class="device-info-card">
+        <div class="device-row">
+          <mat-icon class="device-icon desktop">computer</mat-icon>
+          <div class="device-details">
+            <span class="device-label">This Device</span>
+            <span class="device-id">{{ formatDeviceId(desktopDeviceId) }}</span>
+          </div>
+        </div>
         
-        <!-- Expired Overlay -->
-        <div *ngIf="isExpired" class="expired-overlay">
-          <mat-icon>refresh</mat-icon>
-          <p>QR Code Expired</p>
-          <button mat-raised-button color="primary" (click)="refreshQrCode()">
-            Generate New Code
-          </button>
+        <div class="connection-line" *ngIf="mobileDeviceId">
+          <mat-icon>sync_alt</mat-icon>
         </div>
-
-        <!-- Connected Overlay -->
-        <div *ngIf="isConnected && !isExpired" class="connected-overlay">
-          <mat-icon class="success-icon">check_circle</mat-icon>
-          <p>Connected!</p>
-        </div>
-      </div>
-
-      <!-- Pairing Code -->
-      <div class="pairing-code-section" *ngIf="!isExpired && !isConnected">
-        <p class="pairing-label">Or enter code manually:</p>
-        <div class="pairing-code" (click)="copyPairingCode()" matTooltip="Click to copy">
-          <span class="code">{{ pairingCode }}</span>
-          <mat-icon class="copy-icon">content_copy</mat-icon>
-        </div>
-      </div>
-
-      <!-- Countdown Timer -->
-      <div class="countdown" *ngIf="data.showCountdown !== false && !isExpired && !isConnected">
-        <mat-icon>timer</mat-icon>
-        <span>Expires in {{ remainingTime }}</span>
-      </div>
-
-      <!-- Uploaded Files -->
-      <div class="uploaded-files" *ngIf="uploadedFiles.length > 0">
-        <h4>Uploaded Files ({{ uploadedFiles.length }})</h4>
-        <div class="file-list">
-          <div class="file-item" *ngFor="let upload of uploadedFiles">
-            <mat-icon>check_circle</mat-icon>
-            <span>{{ upload.file.fileName }}</span>
+        
+        <div class="device-row" *ngIf="mobileDeviceId">
+          <mat-icon class="device-icon mobile">smartphone</mat-icon>
+          <div class="device-details">
+            <span class="device-label">Connected Mobile</span>
+            <span class="device-id">{{ formatDeviceId(mobileDeviceId) }}</span>
           </div>
         </div>
       </div>
+
+      <!-- Connected State -->
+      <div *ngIf="isConnected" class="connected-state">
+        <div class="connected-indicator">
+          <mat-icon class="success-icon">check_circle</mat-icon>
+          <span>Mobile Connected!</span>
+        </div>
+        <p class="connected-message">
+          You can now upload images from your mobile device. 
+          Select a file/image upload field and the uploaded files will appear automatically.
+        </p>
+        
+        <!-- Uploaded Files -->
+        <div class="uploaded-files" *ngIf="uploadedFiles.length > 0">
+          <h4>Uploaded Files ({{ uploadedFiles.length }})</h4>
+          <div class="file-list">
+            <div class="file-item" *ngFor="let upload of uploadedFiles">
+              <mat-icon>check_circle</mat-icon>
+              <span>{{ upload.file.fileName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Code (only show when not connected) -->
+      <div *ngIf="!isConnected" class="qr-section">
+        <!-- Connection Status -->
+        <div class="connection-status" [ngClass]="connectionStatus">
+          <div class="status-indicator"></div>
+          <span *ngIf="connectionStatus === 'disconnected'">Waiting for mobile...</span>
+          <span *ngIf="connectionStatus === 'pending'">Waiting for connection...</span>
+        </div>
+
+        <!-- QR Code -->
+        <div class="qr-code-wrapper" [class.expired]="isExpired">
+          <canvas #qrCanvas class="qr-canvas"></canvas>
+          
+          <!-- Expired Overlay -->
+          <div *ngIf="isExpired" class="expired-overlay">
+            <mat-icon>refresh</mat-icon>
+            <p>QR Code Expired</p>
+            <button mat-raised-button color="primary" (click)="refreshQrCode()">
+              Generate New Code
+            </button>
+          </div>
+        </div>
+
+        <!-- Countdown Timer -->
+        <div class="countdown" *ngIf="data.showCountdown !== false && !isExpired">
+          <mat-icon>timer</mat-icon>
+          <span>Expires in {{ remainingTime }}</span>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -89,8 +113,12 @@
       <mat-icon>link_off</mat-icon>
       Disconnect
     </button>
+    <button mat-button *ngIf="!isConnected && !isLoading" (click)="connectToMobile()">
+      <mat-icon>qr_code</mat-icon>
+      Connect & Upload via Mobile
+    </button>
     <button mat-raised-button color="primary" (click)="close()">
-      {{ uploadedFiles.length > 0 ? 'Done' : 'Cancel' }}
+      {{ uploadedFiles.length > 0 ? 'Done' : 'Close' }}
     </button>
   </div>
 </div>

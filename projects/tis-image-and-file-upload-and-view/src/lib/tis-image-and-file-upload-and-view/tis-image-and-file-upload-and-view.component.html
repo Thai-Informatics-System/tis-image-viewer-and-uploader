@@ -89,6 +89,12 @@
                                 <!-- Image upload options in grid -->
                                 <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
                                     <mat-icon class="active">upload_file</mat-icon>
+                                    <!-- Mobile Upload Button -->
+                                    @if(isRemoteUploadAvailable()){
+                                        <button type="button" class="mobile-upload-btn" (click)="$event.stopPropagation(); openRemoteUploadDialog()" title="Upload from Mobile">
+                                            <mat-icon>smartphone</mat-icon>
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         }
@@ -105,6 +111,13 @@
                             <small>{{hint}}</small>
                         }
                     </p>
+                    <!-- Mobile Upload Button -->
+                    @if(isRemoteUploadAvailable()){
+                        <button type="button" class="mobile-upload-btn" (click)="$event.stopPropagation(); openRemoteUploadDialog()" title="Upload from Mobile">
+                            <mat-icon>smartphone</mat-icon>
+                            <span>Upload from Mobile</span>
+                        </button>
+                    }
                 </label>
             }
             @else{
@@ -225,6 +238,12 @@
                             }
                         </div>
                     </div>
+                    <!-- Mobile Upload Button for list view -->
+                    @if(isRemoteUploadAvailable()){
+                        <button type="button" mat-icon-button class="mobile-upload-btn-list" (click)="$event.stopPropagation(); openRemoteUploadDialog()" title="Upload from Mobile" aria-label="Upload from Mobile">
+                            <mat-icon>smartphone</mat-icon>
+                        </button>
+                    }
                 </div>
             }
         </div>

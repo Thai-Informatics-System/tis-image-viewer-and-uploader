@@ -448,3 +448,60 @@
 
 /* Extra Extra Extra large devices (large desktops, 1600px and up) */
 @media (min-width: 1600px) {}
+
+/* Mobile Upload Button Styles */
+.mobile-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background-color: var(--tis-primary, #1F6AAD);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    margin-top: 8px;
+}
+
+.mobile-upload-btn:hover {
+    background-color: var(--tis-primary-dark, #175080);
+}
+
+.mobile-upload-btn mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.mobile-upload-btn span {
+    white-space: nowrap;
+}
+
+/* Mobile Upload Button for list view */
+.mobile-upload-btn-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: var(--tis-primary, #1F6AAD);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.mobile-upload-btn-list:hover {
+    background-color: var(--tis-primary-dark, #175080);
+}
+
+.mobile-upload-btn-list mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
