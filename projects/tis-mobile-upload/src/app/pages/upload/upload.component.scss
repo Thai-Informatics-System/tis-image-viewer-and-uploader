@@ -261,25 +261,135 @@
 }
 
 // ============================================================================
-// Upload Section (Library Component Container)
+// Upload Section
 // ============================================================================
 
 .upload-section {
-  flex: 1;
-  background: white;
-  border-radius: 16px;
+  display: flex;
+  justify-content: center;
   padding: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
 
-  // Override library styles for mobile
-  ::ng-deep {
-    .tis-image-upload-container {
-      min-height: 200px;
+  .upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+}
+
+// ============================================================================
+// Upload Progress
+// ============================================================================
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+  }
+
+  mat-progress-bar {
+    width: 100%;
+    border-radius: 4px;
+  }
+}
+
+// ============================================================================
+// Uploaded Files List
+// ============================================================================
+
+.uploaded-files {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+
+    .file-thumbnail {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 6px;
     }
 
-    .upload-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    .file-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+    }
+
+    .file-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+
+      .file-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-size {
+        font-size: 11px;
+        color: #999;
+      }
+    }
+
+    .sent-icon {
+      color: #4caf50;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
     }
   }
 }

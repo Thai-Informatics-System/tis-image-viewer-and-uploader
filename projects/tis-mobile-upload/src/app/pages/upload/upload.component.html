@@ -1,4 +1,14 @@
 <div class="upload-container">
+  <!-- Hidden file input -->
+  <input 
+    type="file" 
+    #fileInput 
+    [accept]="acceptTypes()" 
+    multiple 
+    (change)="onFileSelected($event)" 
+    style="display: none;" 
+  />
+
   <!-- Loading State -->
   @if (isInitializing()) {
     <div class="loading-state animate-fade-in">
@@ -71,31 +81,49 @@
         <div class="instruction-message">
           <mat-icon>info</mat-icon>
           <span>
-            @if (desktopFieldInfo()) {
-              Select files below to upload. They will appear on the desktop automatically.
-            } @else {
-              Select a file/image upload field on the Desktop app, then upload here.
-            }
+            Tap the button below to select files. They will be uploaded and sent to your desktop.
           </span>
         </div>
 
-        <!-- Library Upload Component -->
-        @if (isReady()) {
+        <!-- Upload Button -->
+        @if (isReady() && !isUploading()) {
           <div class="upload-section">
-            <tis-image-and-file-upload-and-view
-              [type]="uploadType()"
-              viewType="card"
-              [urlConfig]="urlConfig()"
-              [entityType]="entityType()"
-              [disabled]="!isConnected()"
-              [options]="options()"
-              [accept]="acceptTypes()"
-              label="Tap to Upload"
-              [isEnableCapture]="true"
-              (uploadInProgress)="onUploadInProgress($event)"
-              (onUploaded)="onUploaded($event)"
-              (onError)="onError($event)">
-            </tis-image-and-file-upload-and-view>
+            <button mat-raised-button color="primary" class="upload-btn" (click)="openFileSelector()">
+              <mat-icon>{{ uploadType() === 'image' ? 'add_photo_alternate' : 'upload_file' }}</mat-icon>
+              <span>{{ uploadType() === 'image' ? 'Select Images' : 'Select Files' }}</span>
+            </button>
+          </div>
+        }
+
+        <!-- Upload Progress -->
+        @if (isUploading()) {
+          <div class="upload-progress">
+            <mat-spinner diameter="32" color="primary"></mat-spinner>
+            <span>Uploading... {{ uploadProgress() }}%</span>
+            <mat-progress-bar mode="determinate" [value]="uploadProgress()"></mat-progress-bar>
+          </div>
+        }
+
+        <!-- Uploaded Files List -->
+        @if (uploadedFiles().length > 0) {
+          <div class="uploaded-files">
+            <h3>Uploaded Files ({{ uploadedFiles().length }})</h3>
+            <div class="file-list">
+              @for (file of uploadedFiles(); track file.s3Url; let i = $index) {
+                <div class="file-item">
+                  @if (isImageFile(file.mimeType)) {
+                    <img [src]="file.s3Url" alt="Uploaded image" class="file-thumbnail" />
+                  } @else {
+                    <mat-icon class="file-icon">description</mat-icon>
+                  }
+                  <div class="file-info">
+                    <span class="file-name">{{ file.fileName }}</span>
+                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  <mat-icon class="sent-icon">check_circle</mat-icon>
+                </div>
+              }
+            </div>
           </div>
         }
 

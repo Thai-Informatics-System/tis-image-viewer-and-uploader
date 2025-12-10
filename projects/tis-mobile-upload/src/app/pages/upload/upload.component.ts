@@ -1,14 +1,13 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Subject, takeUntil } from 'rxjs';
-
-import { TisImageAndFileUploadAndViewModule } from '@servicemind.tis/tis-image-and-file-upload-and-view';
-import type { UrlConfig, OptionConfig } from '@servicemind.tis/tis-image-and-file-upload-and-view';
+import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 
 import { MobileSocketService, QrCodeParams, ConnectionStatus, DesktopMessage } from '../../services/mobile-socket.service';
 import { MobileUploadService } from '../../services/mobile-upload.service';
@@ -21,14 +20,17 @@ import { MobileUploadService } from '../../services/mobile-upload.service';
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
-    TisImageAndFileUploadAndViewModule
+    MatProgressBarModule,
+    MatSnackBarModule
   ],
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss']
 })
 export class UploadComponent implements OnInit, OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
   private readonly socketService = inject(MobileSocketService);
   private readonly uploadService = inject(MobileUploadService);
   private readonly snackBar = inject(MatSnackBar);
@@ -50,7 +52,7 @@ export class UploadComponent implements OnInit, OnDestroy {
   readonly mobileDeviceId = signal<string>('');
   readonly desktopDeviceId = signal<string>('');
   
-  // API URL from QR params (used for library urlConfig)
+  // API URL from QR params
   readonly apiUrl = signal<string>('');
   
   // Desktop info received via socket (field configuration)
@@ -60,76 +62,24 @@ export class UploadComponent implements OnInit, OnDestroy {
   readonly isConnected = computed(() => this.connectionStatus() === 'connected');
   readonly isReady = computed(() => this.isConnected() && !this.isInitializing() && !!this.apiUrl());
 
-  // Upload tracking from service
+  // Upload tracking
   readonly totalUploaded = this.uploadService.totalUploaded;
   readonly hasUploads = this.uploadService.hasUploads;
+  
+  // Upload progress
+  readonly isUploading = signal(false);
+  readonly uploadProgress = signal(0);
+  readonly uploadedFiles = signal<UploadedFile[]>([]);
 
-  // -------------------------------------------------------------------------
-  // Library Configuration (computed)
-  // -------------------------------------------------------------------------
-
-  /**
-   * URL configuration for the library
-   * Uses apiUrl from QR params as base
-   */
-  readonly urlConfig = computed<UrlConfig>(() => {
-    const base = this.apiUrl();
-    if (!base) {
-      return {
-        getUploadUrl: '',
-        attachToEntity: null,
-        updateTag: null,
-        updateSequence: null,
-        removeImage: ''
-      };
-    }
-
-    return {
-      getUploadUrl: `${base}/file-upload/getUploadUrl`,
-      attachToEntity: `${base}/file-upload/attachToEntity`,
-      updateTag: `${base}/file-upload/updateTag`,
-      updateSequence: `${base}/file-upload/updateSequence`,
-      removeImage: `${base}/file-upload/remove`
-    };
-  });
-
-  /**
-   * Options configuration for the library
-   */
-  readonly options = computed<OptionConfig>(() => {
-    const fieldInfo = this.desktopFieldInfo();
-    return {
-      selectorId: `mobile-upload-${this.mobileDeviceId() || 'default'}`,
-      isMultiple: fieldInfo?.isMultiple ?? true,
-      limit: fieldInfo?.limit ?? 10,
-      isCompressed: fieldInfo?.isCompressed ?? true,
-      hiddenDeleteBtn: false,
-      hiddenPreview: false
-    };
-  });
-
-  /**
-   * Accept types for the library
-   */
+  // File type config
   readonly acceptTypes = computed(() => {
     const fieldInfo = this.desktopFieldInfo();
-    return fieldInfo?.accept || '.png,.jpeg,.jpg,.pdf';
+    return fieldInfo?.accept || 'image/*,.pdf';
   });
 
-  /**
-   * Upload type (image or file)
-   */
   readonly uploadType = computed<'image' | 'file'>(() => {
     const fieldInfo = this.desktopFieldInfo();
     return fieldInfo?.type || 'image';
-  });
-
-  /**
-   * Entity type for upload
-   */
-  readonly entityType = computed(() => {
-    const fieldInfo = this.desktopFieldInfo();
-    return fieldInfo?.entityType || 'mobile_upload';
   });
 
   constructor() {
@@ -282,35 +232,106 @@ export class UploadComponent implements OnInit, OnDestroy {
   }
 
   // -------------------------------------------------------------------------
-  // Library Event Handlers
+  // File Upload
   // -------------------------------------------------------------------------
 
-  /**
-   * Called when library successfully uploads a file
-   * Send the upload data to desktop via socket
-   */
-  onUploaded(event: any): void {
-    console.log('[UploadComponent] File uploaded:', event);
-    
-    // Send to desktop via socket
-    this.uploadService.sendToDesktop(event);
-    
-    this.snackBar.open('File sent to desktop!', '', { duration: 2000 });
+  openFileSelector(): void {
+    this.fileInput?.nativeElement?.click();
   }
 
-  /**
-   * Called when upload is in progress
-   */
-  onUploadInProgress(event: any): void {
-    console.log('[UploadComponent] Upload in progress:', event);
+  async onFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const files = Array.from(input.files);
+    
+    for (const file of files) {
+      await this.uploadFile(file);
+    }
+
+    // Clear input for next selection
+    input.value = '';
   }
 
-  /**
-   * Called when there's an upload error
-   */
-  onError(event: any): void {
-    console.error('[UploadComponent] Upload error:', event);
-    this.snackBar.open('Upload failed. Please try again.', '', { duration: 3000 });
+  private async uploadFile(file: File): Promise<void> {
+    if (!this.apiUrl()) {
+      this.snackBar.open('Not connected to server', '', { duration: 2000 });
+      return;
+    }
+
+    this.isUploading.set(true);
+    this.uploadProgress.set(0);
+
+    try {
+      // Step 1: Get presigned upload URL
+      const uploadUrlResponse = await firstValueFrom(
+        this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}/file-upload/getUploadUrl`, {
+          fileName: file.name,
+          contentType: file.type
+        })
+      );
+
+      if (!uploadUrlResponse?.uploadUrl || !uploadUrlResponse?.s3Url) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      // Step 2: Upload to S3
+      await this.uploadToS3(uploadUrlResponse.uploadUrl, file);
+
+      // Step 3: Create uploaded file record
+      const uploadedFile: UploadedFile = {
+        s3Url: uploadUrlResponse.s3Url,
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
+        uploadData: uploadUrlResponse.uploadData
+      };
+
+      // Add to local list
+      this.uploadedFiles.update(files => [...files, uploadedFile]);
+
+      // Step 4: Send to desktop via socket
+      this.uploadService.sendToDesktop(uploadedFile);
+
+      this.snackBar.open('File sent to desktop!', '', { duration: 2000 });
+
+    } catch (error: any) {
+      console.error('[UploadComponent] Upload failed:', error);
+      this.snackBar.open('Upload failed. Please try again.', '', { duration: 3000 });
+    } finally {
+      this.isUploading.set(false);
+      this.uploadProgress.set(0);
+    }
+  }
+
+  private uploadToS3(uploadUrl: string, file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.http.put(uploadUrl, file, {
+        headers: {
+          'Content-Type': file.type
+        },
+        reportProgress: true,
+        observe: 'events'
+      }).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe({
+        next: (event) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const progress = event.total 
+              ? Math.round((event.loaded / event.total) * 100) 
+              : 0;
+            this.uploadProgress.set(progress);
+          } else if (event.type === HttpEventType.Response) {
+            resolve();
+          }
+        },
+        error: (err) => reject(err)
+      });
+    });
+  }
+
+  removeFile(index: number): void {
+    this.uploadedFiles.update(files => files.filter((_, i) => i !== index));
   }
 
   // -------------------------------------------------------------------------
@@ -329,6 +350,7 @@ export class UploadComponent implements OnInit, OnDestroy {
     this.desktopDeviceId.set('');
     this.apiUrl.set('');
     this.desktopFieldInfo.set(null);
+    this.uploadedFiles.set([]);
   }
 
   // -------------------------------------------------------------------------
@@ -342,6 +364,16 @@ export class UploadComponent implements OnInit, OnDestroy {
       return `${id.slice(0, 8)}...${id.slice(-4)}`;
     }
     return id;
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  isImageFile(mimeType: string): boolean {
+    return mimeType.startsWith('image/');
   }
 }
 
@@ -358,4 +390,18 @@ interface DesktopFieldInfo {
   isMultiple?: boolean;
   limit?: number;
   isCompressed?: boolean;
+}
+
+interface GetUploadUrlResponse {
+  uploadUrl: string;
+  s3Url: string;
+  uploadData?: any;
+}
+
+interface UploadedFile {
+  s3Url: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadData?: any;
 }
