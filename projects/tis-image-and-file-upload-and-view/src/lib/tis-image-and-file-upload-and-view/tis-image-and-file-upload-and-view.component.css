@@ -2,6 +2,29 @@
     border: 2px solid red !important;
 }
 
+/* Drag and Drop styles */
+.cdk-drag-preview {
+    box-sizing: border-box;
+    border-radius: 8px;
+    box-shadow: 0 5px 25px -5px rgba(0, 0, 0, 0.3);
+    opacity: 0.9;
+}
+
+.cdk-drag-placeholder {
+    opacity: 0.3;
+}
+
+.cdk-drag-animating {
+    transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Drop target highlight */
+.drag-over-highlight .image-item {
+    outline: 3px solid #3f51b5 !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 15px rgba(63, 81, 181, 0.5) !important;
+}
+
 .grid {
     display: grid;
 }
@@ -192,7 +215,7 @@
 }
 
 .image-list .image-item {
-    height: 100px;
+    aspect-ratio: 1;
     border-radius: 5px;
     background-position: center;
     background-size: cover;

@@ -10,7 +10,7 @@ import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-c
 import { TisQrCodeDialogComponent, TisQrCodeDialogData } from '../tis-qr-code-dialog/tis-qr-code-dialog.component';
 import { TisRemoteUploadService } from '../services/tis-remote-upload.service';
 import { Config } from '../interfaces/config.type';
-import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, CdkDragMove, moveItemInArray } from '@angular/cdk/drag-drop';
 
 const generateRandomString = (length: number): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -1588,12 +1588,6 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     }
   }
 
-  setHeight(id: string) {
-    let height = document.getElementById(id)?.offsetWidth;
-    // console.log("=== setHeight::height ===", id, height);
-    return `${height}px`;
-  }
-
   generateFilesForSingleCard(){
     if(this.filesArray?.length < this.config.limit){
       for (let index = 0; index < (this.config.limit - this.filesArray?.length); index++) {
@@ -1679,24 +1673,114 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     });
   }
 
+  // Drag state for highlighting
+  isDragging = false;
+  dragSourceIndex: number | null = null;
+  dropTargetIndex: number | null = null;
+
+  onDragStarted(index: number) {
+    this.isDragging = true;
+    this.dragSourceIndex = index;
+    this.dropTargetIndex = null;
+  }
+
+  onDragEntered(index: number) {
+    if (this.isDragging && index !== this.dragSourceIndex) {
+      this.dropTargetIndex = index;
+    }
+  }
+
+  onDragMoved(event: CdkDragMove) {
+    if (!this.isDragging) return;
+    
+    const pointerPosition = event.pointerPosition;
+    const dropItems = document.querySelectorAll('.drag-drop-item');
+    
+    let foundTarget: number | null = null;
+    
+    dropItems.forEach((item) => {
+      const rect = item.getBoundingClientRect();
+      const index = parseInt(item.getAttribute('data-index') || '-1', 10);
+      
+      if (index !== -1 && index !== this.dragSourceIndex) {
+        if (
+          pointerPosition.x >= rect.left &&
+          pointerPosition.x <= rect.right &&
+          pointerPosition.y >= rect.top &&
+          pointerPosition.y <= rect.bottom
+        ) {
+          foundTarget = index;
+        }
+      }
+    });
+    
+    this.dropTargetIndex = foundTarget;
+  }
+
+  onMouseEnterItem(index: number) {
+    if (this.isDragging && index !== this.dragSourceIndex) {
+      this.dropTargetIndex = index;
+    }
+  }
+
+  onMouseLeaveItem() {
+    // Only clear if we're dragging - the next mouseenter will set the new target
+  }
+
+  onDragEnded() {
+    // Don't reset state here - let drop() handle it
+    // This event fires BEFORE drop(), so resetting here clears our tracked indices
+    this.isDragging = false;
+    // Keep dragSourceIndex and dropTargetIndex - they'll be reset in drop()
+  }
+
   drop(event: CdkDragDrop<any[]>) {
-    // Ignore if the item was dropped at the same index
-    if (event.previousIndex === event.currentIndex) {
+    // Use our tracked source index instead of CDK's previousIndex (which is unreliable for grids)
+    const sourceIndex = this.dragSourceIndex !== null ? this.dragSourceIndex : event.previousIndex;
+    const targetIndex = this.dropTargetIndex !== null ? this.dropTargetIndex : event.currentIndex;
+
+    // Log drag info for debugging
+    const draggedItem = this.filesArray[sourceIndex];
+    console.log('=== DRAG & DROP DEBUG ===');
+    console.log('Picked element:', {
+      title: draggedItem?.title || draggedItem?.s3Url?.split('/').pop(),
+      originalPosition: sourceIndex + 1,
+      s3Url: draggedItem?.s3Url
+    });
+    console.log('Dropping at position:', targetIndex + 1);
+    console.log('dragSourceIndex (our tracking):', this.dragSourceIndex);
+    console.log('dropTargetIndex (our tracking):', this.dropTargetIndex);
+    console.log('event.currentIndex (CDK):', event.currentIndex);
+    console.log('event.previousIndex (CDK):', event.previousIndex);
+
+    // Reset drag state
+    this.isDragging = false;
+    this.dragSourceIndex = null;
+    this.dropTargetIndex = null;
+
+    // Ignore if same position
+    if (sourceIndex === targetIndex) {
+      console.log('Same position - no change needed');
       return;
     }
 
-    // Access current data from apiSubject
+    // Access current data
     const currentData = [...this.filesArray];
 
     if (!currentData || currentData.length === 0) {
       return;
     }
 
-    // Rearrange items based on the drop event
-    moveItemInArray(currentData, event.previousIndex, event.currentIndex);
+    // Reorder: move item from source to target position (shift other items)
+    moveItemInArray(currentData, sourceIndex, targetIndex);
 
-    // Update the apiSubject with reordered data
+    // Update filesArray with reordered data
     this.filesArray = currentData;
+
+    // Log after reorder
+    const newPosition = this.filesArray.findIndex((f: any) => f.s3Url === draggedItem?.s3Url);
+    console.log('After reorder - element new position:', newPosition + 1);
+    console.log('=========================');
 
     this.updateSequence(true);
   }

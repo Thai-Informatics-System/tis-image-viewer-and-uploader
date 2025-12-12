@@ -11,6 +11,14 @@ import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, UrlConf
 export class AppComponent {
   title = 'tis-ng-image-and-file-upload-and-view';
   selectedId = 1;
+
+  // Generate random 10-digit entityId for testing
+  entityId = this.generateRandomEntityId();
+  entityType = 'test_image_uploader';
+
+  private generateRandomEntityId(): string {
+    return Math.floor(1000000000 + Math.random() * 9000000000).toString();
+  }
   images = [
     {
       "id": 1,
@@ -140,6 +148,7 @@ export class AppComponent {
   }
 
   ngOnInit() {
+    console.log('Testing with entityId:', this.entityId, 'entityType:', this.entityType);
   }
 
   getImagePickerDialogConfig(){

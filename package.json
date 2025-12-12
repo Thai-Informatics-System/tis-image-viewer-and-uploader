@@ -3,7 +3,7 @@
   "version": "1.2.25",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve  --port 4201",
     "build": "ng build",
     "build-library": "ng build tis-image-and-file-upload-and-view --configuration=production",
     "build-library-watch": "ng build tis-image-and-file-upload-and-view --configuration=production --watch",
