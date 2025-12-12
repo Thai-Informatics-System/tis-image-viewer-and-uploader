@@ -1842,7 +1842,17 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
       subtitle: `Scan this QR code to upload ${this.type === 'image' ? 'images' : 'files'} from your mobile device`,
       qrSize: 200,
       showCountdown: true,
-      autoCloseOnUpload: false
+      autoCloseOnUpload: false,
+      fieldInfo: {
+        label: this.label || `${this.type === 'image' ? 'Images' : 'Files'}`,
+        accept: this.accept || (this.type === 'image' ? 'image/*' : '*'),
+        type: this.type,
+        entityType: this.entityType,
+        entityId: this.entityId,
+        isMultiple: this.config.isMultiple,
+        limit: this.config.limit,
+        isCompressed: this.config.isCompressed
+      }
     };
 
     const dialogRef = this.dialog.open(TisQrCodeDialogComponent, {

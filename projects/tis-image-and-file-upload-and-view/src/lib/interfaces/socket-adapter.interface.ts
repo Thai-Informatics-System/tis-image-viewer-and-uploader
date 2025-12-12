@@ -77,9 +77,17 @@ export interface TisSocketAdapter {
 
   /**
    * Send a message directly via socket (for handshake and communication)
-   * @param message - The message to send { action: string, data: any }
+   * @param message - The message to send { action: string; data: any }
    */
   sendViaSocket?(message: { action: string; data: any }): void;
+
+  /**
+   * Call API via socket and get response as Observable
+   * @param route - The API route to call
+   * @param body - The request body
+   * @returns Observable that emits the API response
+   */
+  callApiViaSocket?(route: string, body: any): Observable<any>;
 }
 
 /**

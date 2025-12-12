@@ -42,6 +42,7 @@ export interface StoredSession {
   socketUrl?: string;
   accessToken?: string;
   refreshToken?: string;
+  mobileDeviceId?: string;
   storedAt: number;
 }
 
@@ -49,10 +50,15 @@ export interface StoredSession {
  * Response from generate-login-and-refresh-token API
  */
 interface TokenResponse {
+  success?: boolean;
   accessToken: string;
   refreshToken: string;
   socketUrl: string;
   expiresIn?: number;
+  uploadChannelPrefix?: string;
+  desktopDeviceId?: string;
+  mobileDeviceId?: string;
+  data?: TokenResponse; // API may wrap response in data field
 }
 
 /**
@@ -66,6 +72,25 @@ export interface DesktopMessage {
   [key: string]: any;
 }
 
+/**
+ * Channel stream for subscriptions
+ */
+export interface ChannelStream {
+  channelName: string;
+  data$: Subject<any>;
+  responseCount: number;
+  closeAfterFirstResponse: boolean;
+}
+
+/**
+ * Channel subscription info
+ */
+interface ChannelSubscriptionInfo {
+  subject: Subject<any>;
+  closeAfterFirstResponse: boolean;
+  isActive: boolean;
+}
+
 // =============================================================================
 // Service
 // =============================================================================
@@ -75,6 +100,7 @@ export class MobileSocketService implements OnDestroy {
   private static readonly COMPONENT = 'MobileSocketService';
   private static readonly STORAGE_KEY = 'tis-mobile-session';
   private static readonly SESSION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private static readonly TOKEN_EXPIRY_BUFFER = 60 * 1000; // 1 minute buffer before expiry
 
   private readonly http = inject(HttpClient);
   private readonly fingerprintService = inject(FingerprintService);
@@ -117,7 +143,9 @@ export class MobileSocketService implements OnDestroy {
   private lastPongReceived = 0;
 
   // Channel subscriptions
-  private channels = new Map<string, Subject<any>>();
+  private channels = new Map<string, ChannelStream>();
+  private activeChannelSubscriptions = new Map<string, ChannelSubscriptionInfo>();
+  private activePrefixes = new Set<string>();
 
   constructor() {
     this.initializeMobileDeviceId();
@@ -212,6 +240,7 @@ export class MobileSocketService implements OnDestroy {
       deviceId: params.deviceId,
       userId: params.userId,
       apiUrl: params.apiUrl,
+      mobileDeviceId: this.mobileDeviceId,
       storedAt: Date.now()
     });
 
@@ -256,6 +285,13 @@ export class MobileSocketService implements OnDestroy {
       this.accessToken = stored.accessToken;
       this.refreshToken = stored.refreshToken || '';
       this.channelName = `tis-mobile-upload-w-dev-${stored.deviceId}`;
+      
+      // Restore mobileDeviceId from stored session, or initialize if not available
+      if (stored.mobileDeviceId) {
+        this.mobileDeviceId = stored.mobileDeviceId;
+      } else if (!this.mobileDeviceId) {
+        await this.initializeMobileDeviceId();
+      }
 
       await this.connect();
       await this.establishMobileUploadLink();
@@ -285,7 +321,7 @@ export class MobileSocketService implements OnDestroy {
     console.log(`[${MobileSocketService.COMPONENT}] Fetching tokens from:`, endpoint);
 
     try {
-      const response = await firstValueFrom(
+      const apiResponse = await firstValueFrom(
         this.http.post<TokenResponse>(endpoint, {
           token,
           deviceId: this.desktopDeviceId,
@@ -299,6 +335,15 @@ export class MobileSocketService implements OnDestroy {
         )
       );
 
+      // Handle both direct response and data-wrapped response
+      const response = apiResponse.data || apiResponse;
+      
+      console.log(`[${MobileSocketService.COMPONENT}] API Response:`, JSON.stringify(apiResponse, null, 2));
+
+      if (!response.accessToken || !response.socketUrl) {
+        throw new Error('Invalid token response: missing accessToken or socketUrl');
+      }
+
       this.accessToken = response.accessToken;
       this.refreshToken = response.refreshToken;
       this.socketUrl = response.socketUrl;
@@ -310,7 +355,8 @@ export class MobileSocketService implements OnDestroy {
           ...stored,
           accessToken: this.accessToken,
           refreshToken: this.refreshToken,
-          socketUrl: this.socketUrl
+          socketUrl: this.socketUrl,
+          mobileDeviceId: this.mobileDeviceId
         });
       }
 
@@ -323,13 +369,148 @@ export class MobileSocketService implements OnDestroy {
   }
 
   // ===========================================================================
+  // Token Validation & Refresh
+  // ===========================================================================
+
+  /**
+   * Decode JWT token payload (without verification)
+   */
+  private decodeJwtPayload(token: string): any | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      
+      const payload = parts[1];
+      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decoded);
+    } catch (e) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Failed to decode JWT:`, e);
+      return null;
+    }
+  }
+
+  /**
+   * Check if JWT token is expired or about to expire
+   */
+  private isTokenExpired(token: string): boolean {
+    const payload = this.decodeJwtPayload(token);
+    if (!payload || !payload.exp) {
+      // If we can't decode or no exp claim, assume expired
+      return true;
+    }
+
+    const expiryTime = payload.exp * 1000; // Convert to milliseconds
+    const now = Date.now();
+    const isExpired = now >= (expiryTime - MobileSocketService.TOKEN_EXPIRY_BUFFER);
+    
+    if (isExpired) {
+      console.log(`[${MobileSocketService.COMPONENT}] Token expired or expiring soon. Expiry: ${new Date(expiryTime).toISOString()}, Now: ${new Date(now).toISOString()}`);
+    }
+    
+    return isExpired;
+  }
+
+  /**
+   * Refresh the access token using refresh token
+   */
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const endpoint = `${this.apiUrl}/ease-of-access/refresh-token-for-mobile-link-app`;
+    
+    console.log(`[${MobileSocketService.COMPONENT}] Refreshing access token...`);
+
+    try {
+      const apiResponse = await firstValueFrom(
+        this.http.post<TokenResponse>(endpoint, {
+          refreshToken: this.refreshToken,
+          mobileDeviceId: this.mobileDeviceId,
+          desktopDeviceId: this.desktopDeviceId
+        }).pipe(
+          timeout(30000),
+          catchError(err => {
+            throw new Error(err.error?.message || 'Failed to refresh token');
+          })
+        )
+      );
+
+      // Handle both direct response and data-wrapped response
+      const response = apiResponse.data || apiResponse;
+
+      if (!response.accessToken) {
+        throw new Error('Invalid refresh token response: missing accessToken');
+      }
+
+      this.accessToken = response.accessToken;
+      
+      // Update refresh token if provided
+      if (response.refreshToken) {
+        this.refreshToken = response.refreshToken;
+      }
+
+      // Update stored session with new tokens
+      const stored = this.getStoredSession();
+      if (stored) {
+        this.saveSession({
+          ...stored,
+          accessToken: this.accessToken,
+          refreshToken: this.refreshToken
+        });
+      }
+
+      console.log(`[${MobileSocketService.COMPONENT}] Access token refreshed successfully`);
+
+    } catch (error: any) {
+      console.error(`[${MobileSocketService.COMPONENT}] Token refresh failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate access token and refresh if expired
+   */
+  private async validateAndRefreshToken(): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error('No access token available');
+    }
+
+    if (this.isTokenExpired(this.accessToken)) {
+      console.log(`[${MobileSocketService.COMPONENT}] Access token expired, attempting refresh...`);
+      
+      if (!this.refreshToken) {
+        throw new Error('Access token expired and no refresh token available. Please scan QR code again.');
+      }
+
+      try {
+        await this.refreshAccessToken();
+      } catch (error: any) {
+        // If refresh fails, clear session and throw
+        this.clearStoredSession();
+        throw new Error('Session expired. Please scan QR code again.');
+      }
+    } else {
+      console.log(`[${MobileSocketService.COMPONENT}] Access token is valid`);
+    }
+  }
+
+  // ===========================================================================
   // WebSocket Connection
   // ===========================================================================
 
   /**
    * Connect to WebSocket
    */
-  private connect(): Promise<void> {
+  private async connect(): Promise<void> {
+    // Ensure mobileDeviceId is available
+    if (!this.mobileDeviceId) {
+      await this.initializeMobileDeviceId();
+    }
+
+    // Validate and refresh token if needed before connecting
+    await this.validateAndRefreshToken();
+    
     return new Promise((resolve, reject) => {
       this.transitionTo('CONNECTING');
 
@@ -337,12 +518,18 @@ export class MobileSocketService implements OnDestroy {
         reject(new Error('Socket URL not available'));
         return;
       }
+      
+      if (!this.mobileDeviceId) {
+        reject(new Error('Mobile device ID not available'));
+        return;
+      }
 
-      // Add auth token to socket URL
+      // Add auth token and device ID to socket URL
       const url = new URL(this.socketUrl);
-      url.searchParams.set('token', this.accessToken);
+      url.searchParams.set('Auth', this.accessToken);
+      url.searchParams.set('deviceId', this.mobileDeviceId);
 
-      console.log(`[${MobileSocketService.COMPONENT}] Connecting to WebSocket...`);
+      console.log(`[${MobileSocketService.COMPONENT}] Connecting to WebSocket with deviceId:`, this.mobileDeviceId);
 
       try {
         this.socket = new WebSocket(url.toString());
@@ -385,40 +572,95 @@ export class MobileSocketService implements OnDestroy {
     // Subscribe to channel for desktop messages
     this.subscribeToChannel(this.channelName);
 
-    // Call establish-mobile-upload-link action
-    this.sendMessage({
-      action: 'establish-mobile-upload-link',
-      data: {
-        desktopDeviceId: this.desktopDeviceId,
-        mobileDeviceId: this.mobileDeviceId,
-        userId: this.userId,
-        channel: this.channelName
-      }
-    });
-
-    // Also send INITIATED state to the channel
-    this.sendToDesktop('connectionState', {
-      state: 'INITIATED',
-      mobileDeviceId: this.mobileDeviceId
-    });
-
-    this.transitionTo('WAITING_FOR_DESKTOP');
-
-    // Wait for SUCCESS from desktop (with timeout)
-    return new Promise((resolve, reject) => {
+    // Set up the response listener BEFORE making the API call
+    // This ensures we don't miss the mobile-link-established message
+    const connectionPromise = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Desktop did not respond. Please ensure the desktop app is open.'));
       }, 30000);
 
       const sub = this._desktopMessages$.subscribe(msg => {
+        // Handle mobile-link-established from backend (via desktop channel)
+        if (msg.type === 'mobile-link-established') {
+          console.log(`[${MobileSocketService.COMPONENT}] Received mobile-link-established:`, msg);
+          clearTimeout(timeout);
+          sub.unsubscribe();
+          this.transitionTo('CONNECTED');
+          resolve();
+        }
+        // Also handle legacy SUCCESS response
         if (msg.type === 'connectionState' && (msg.state === 'SUCCESS' || msg.connectionState === 'SUCCESS')) {
           clearTimeout(timeout);
           sub.unsubscribe();
           this.transitionTo('CONNECTED');
           resolve();
         }
+        // Handle disconnect from desktop
+        if (msg.type === 'mobile-link-disconnected' || msg.type === 'disconnect') {
+          console.log(`[${MobileSocketService.COMPONENT}] Desktop disconnected:`, msg);
+          clearTimeout(timeout);
+          sub.unsubscribe();
+          this.handleRemoteDisconnect();
+          reject(new Error('Desktop disconnected the session.'));
+        }
       });
     });
+
+    try {
+      // Call establish-mobile-upload-link action via proper API route
+      const response = await this.callApiViaSocketPromise('tis-image-mobile-uploader/establish-mobile-upload-link', {
+        desktopDeviceId: this.desktopDeviceId,
+        mobileDeviceId: this.mobileDeviceId,
+        userId: this.userId,
+        channel: this.channelName
+      });
+
+      console.log(`[${MobileSocketService.COMPONENT}] Establish link response:`, response);
+
+    } catch (error: any) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Establish link API call failed:`, error);
+      // Continue anyway - the channel subscription should still work
+    }
+
+    this.transitionTo('WAITING_FOR_DESKTOP');
+
+    // Wait for the connection response
+    return connectionPromise;
+  }
+
+  /**
+   * Handle disconnect initiated from remote (desktop) side
+   */
+  private handleRemoteDisconnect(): void {
+    console.log(`[${MobileSocketService.COMPONENT}] Handling remote disconnect...`);
+    this.cleanup();
+    this.clearStoredSession();
+    this.transitionTo('DISCONNECTED');
+    this._error$.next('Connection was ended by the desktop app.');
+  }
+
+  /**
+   * Disconnect from desktop - call API and clear local state
+   */
+  async disconnectFromDesktop(): Promise<void> {
+    console.log(`[${MobileSocketService.COMPONENT}] Disconnecting from desktop...`);
+
+    try {
+      // Call disconnect API
+      await this.callApiViaSocketPromise('tis-image-mobile-uploader/disconnect-mobile-link', {
+        mobileDeviceId: this.mobileDeviceId,
+        desktopDeviceId: this.desktopDeviceId,
+        initiatedBy: 'mobile'
+      });
+    } catch (error: any) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Disconnect API call failed:`, error);
+      // Continue with local cleanup anyway
+    }
+
+    // Clear local state
+    this.cleanup();
+    this.clearStoredSession();
+    this.transitionTo('DISCONNECTED');
   }
 
   // ===========================================================================
@@ -426,9 +668,9 @@ export class MobileSocketService implements OnDestroy {
   // ===========================================================================
 
   /**
-   * Send raw message via socket
+   * Send raw message via socket (internal use only - for ping/pong and callApiViaSocket)
    */
-  private sendMessage(message: any): void {
+  private sendRawMessage(message: any): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       console.warn(`[${MobileSocketService.COMPONENT}] Cannot send, socket not open`);
       return;
@@ -442,21 +684,22 @@ export class MobileSocketService implements OnDestroy {
   }
 
   /**
-   * Send message to desktop via channel
+   * Send message to desktop via the channel (direct socket message, no API call)
    */
   sendToDesktop(type: string, data: any): void {
-    this.sendMessage({
+    const message = {
       action: 'send-to-channel',
       data: {
         channel: this.channelName,
-        type,
         payload: {
+          type,
           ...data,
           mobileDeviceId: this.mobileDeviceId,
           timestamp: Date.now()
         }
       }
-    });
+    };
+    this.sendRawMessage(message);
   }
 
   /**
@@ -480,13 +723,41 @@ export class MobileSocketService implements OnDestroy {
         this._desktopMessages$.next(message);
       }
 
-      // Route to channel subscribers
+      // Route to channel subscribers (including API responses)
       if (parsed.channel) {
         const channels = Array.isArray(parsed.channel) ? parsed.channel : [parsed.channel];
         channels.forEach((ch: string) => {
-          const subject = this.channels.get(ch);
-          if (subject) {
-            subject.next(parsed);
+          // First try exact match
+          let channelStream = this.channels.get(ch);
+          
+          // If no exact match, try to find a channel that starts with this route (for API responses)
+          if (!channelStream) {
+            for (const [key, value] of this.channels.entries()) {
+              if (key.startsWith(ch + '_') || ch.startsWith(key)) {
+                channelStream = value;
+                break;
+              }
+            }
+          }
+          
+          // Also check prefix subscriptions
+          if (!channelStream) {
+            for (const prefix of this.activePrefixes) {
+              if (ch.startsWith(prefix)) {
+                channelStream = this.channels.get(`_prefix_${prefix}`);
+                break;
+              }
+            }
+          }
+          
+          if (channelStream) {
+            channelStream.data$.next(parsed);
+            channelStream.responseCount++;
+            
+            // Auto-close channel after first response if configured
+            if (channelStream.closeAfterFirstResponse && channelStream.responseCount >= 1) {
+              this.unsubscribeFromChannel(ch);
+            }
           }
         });
       }
@@ -499,19 +770,100 @@ export class MobileSocketService implements OnDestroy {
   /**
    * Subscribe to a channel
    */
-  subscribeToChannel(channelName: string): Observable<any> {
-    let subject = this.channels.get(channelName);
-    if (!subject) {
-      subject = new Subject<any>();
-      this.channels.set(channelName, subject);
+  subscribeToChannel(channelName: string, closeChannelAfterFirstResponse = false): ChannelStream {
+    let info = this.activeChannelSubscriptions.get(channelName);
+    const isNew = !info;
 
-      // Tell server to subscribe
-      this.sendMessage({
-        action: 'subscribe',
-        data: { channel: channelName }
-      });
+    if (!info) {
+      info = { subject: new Subject<any>(), closeAfterFirstResponse: closeChannelAfterFirstResponse, isActive: true };
+      this.activeChannelSubscriptions.set(channelName, info);
+      console.log(`[${MobileSocketService.COMPONENT}] Creating subscription: ${channelName}`);
+    } else {
+      info.isActive = true;
+      info.closeAfterFirstResponse = closeChannelAfterFirstResponse;
     }
-    return subject.asObservable();
+
+    // Send subscription to server for new channels (not prefix channels)
+    if (this.connectionState === 'CONNECTED' && isNew && !channelName.startsWith('_prefix_')) {
+      this.sendChannelSubscription(channelName);
+    }
+
+    let channel = this.channels.get(channelName);
+    if (!channel) {
+      channel = { channelName, data$: info.subject, responseCount: 0, closeAfterFirstResponse: closeChannelAfterFirstResponse };
+      this.channels.set(channelName, channel);
+    }
+    return channel;
+  }
+
+  /**
+   * Subscribe to a channel prefix (for receiving messages on multiple channels with same prefix)
+   */
+  subscribeToChannelPrefix(prefix: string): ChannelStream {
+    console.log(`[${MobileSocketService.COMPONENT}] Prefix subscribe "${prefix}"`);
+    if (!this.activePrefixes.has(prefix)) {
+      this.activePrefixes.add(prefix);
+      console.log(`[${MobileSocketService.COMPONENT}] Added new prefix subscription: ${prefix}`);
+    }
+    
+    const tempChannelName = `_prefix_${prefix}`;
+    let info = this.activeChannelSubscriptions.get(tempChannelName);
+    if (!info) {
+      info = { subject: new Subject<any>(), closeAfterFirstResponse: false, isActive: true };
+      this.activeChannelSubscriptions.set(tempChannelName, info);
+    } else {
+      info.isActive = true;
+    }
+    
+    let existing = this.channels.get(tempChannelName);
+    if (!existing) {
+      existing = { channelName: tempChannelName, data$: info.subject, responseCount: 0, closeAfterFirstResponse: false };
+      this.channels.set(tempChannelName, existing);
+    }
+    return existing;
+  }
+
+  /**
+   * Unsubscribe from a channel
+   */
+  unsubscribeFromChannel(channelName: string): void {
+    const channelInfo = this.activeChannelSubscriptions.get(channelName);
+    if (channelInfo) {
+      channelInfo.isActive = false;
+      try { channelInfo.subject.complete(); } catch { }
+      this.activeChannelSubscriptions.delete(channelName);
+      this.channels.delete(channelName);
+
+      // Notify server of unsubscription
+      if (this.connectionState === 'CONNECTED' && !channelName.startsWith('_prefix_')) {
+        this.sendRawMessage({ action: 'unsubscribe', data: { channel: channelName } });
+      }
+
+      // Handle prefix channels
+      if (channelName.startsWith('_prefix_')) {
+        const prefix = channelName.slice('_prefix_'.length);
+        this.activePrefixes.delete(prefix);
+      }
+      
+      console.log(`[${MobileSocketService.COMPONENT}] Unsubscribed from channel: ${channelName}`);
+    }
+  }
+
+  /**
+   * Unsubscribe from a channel prefix
+   */
+  unsubscribeFromChannelPrefix(prefix: string): void {
+    console.log(`[${MobileSocketService.COMPONENT}] Unsubscribe prefix "${prefix}"`);
+    const tempName = `_prefix_${prefix}`;
+    this.unsubscribeFromChannel(tempName);
+  }
+
+  /**
+   * Send channel subscription to server
+   */
+  private sendChannelSubscription(channelName: string): void {
+    const socketBodyPayload = { route: 'tis-image-mobile-uploader/subscribe', body: { channel: channelName } };
+    this.sendRawMessage({ action: 'api', data: socketBodyPayload });
   }
 
   // ===========================================================================
@@ -519,43 +871,49 @@ export class MobileSocketService implements OnDestroy {
   // ===========================================================================
 
   /**
-   * Call API via socket
+   * Call API via socket - returns Observable for the response
    */
-  callApiViaSocket(route: string, data: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const requestId = `${route}_${Date.now()}`;
-      
-      // Create temporary channel for response
-      const responseChannel = new Subject<any>();
-      this.channels.set(requestId, responseChannel);
+  callApiViaSocket(url: string, body: any = null): Observable<any> {
+    const socketBodyPayload = { route: url, body };
+    this.verifyConnectionStatus();
+    this.sendRawMessage({ action: 'api', data: socketBodyPayload });
+    const channel = this.subscribeToChannel(url, true);
+    return channel.data$.asObservable();
+  }
 
+  /**
+   * Call API via socket - returns Promise for convenience
+   */
+  callApiViaSocketPromise(url: string, body: any = null): Promise<any> {
+    return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this.channels.delete(requestId);
         reject(new Error('API call timeout'));
       }, 30000);
 
-      responseChannel.pipe(take(1)).subscribe({
+      this.callApiViaSocket(url, body).pipe(take(1)).subscribe({
         next: (response) => {
           clearTimeout(timeout);
-          this.channels.delete(requestId);
-          
           if (response.status === 200 || response.statusCode === 200) {
             resolve(response.payload || response.body || response);
           } else {
-            reject(new Error(response.message || 'API call failed'));
+            reject(new Error(response.message || response.body?.message || 'API call failed'));
           }
         },
-        error: reject
-      });
-
-      this.sendMessage({
-        action: route,
-        data: {
-          ...data,
-          requestId
+        error: (err) => {
+          clearTimeout(timeout);
+          reject(err);
         }
       });
     });
+  }
+
+  /**
+   * Verify connection status before sending
+   */
+  private verifyConnectionStatus(): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Socket not connected, message may not be delivered`);
+    }
   }
 
   // ===========================================================================
@@ -568,7 +926,8 @@ export class MobileSocketService implements OnDestroy {
 
     this.heartbeatInterval = setInterval(() => {
       if (this.socket?.readyState === WebSocket.OPEN) {
-        this.sendMessage({ action: 'ping' });
+        // Send ping via proper route (fire and forget, don't wait for response)
+        this.sendRawMessage({ action: 'ping' });
 
         // Check if pong received
         if (Date.now() - this.lastPongReceived > 45000) {
@@ -717,8 +1076,13 @@ export class MobileSocketService implements OnDestroy {
       this.socket = null;
     }
 
-    this.channels.forEach(ch => ch.complete());
+    // Close all channel subscriptions
+    this.activeChannelSubscriptions.forEach((info, channelName) => {
+      try { info.subject.complete(); } catch {}
+    });
+    this.activeChannelSubscriptions.clear();
     this.channels.clear();
+    this.activePrefixes.clear();
   }
 
   ngOnDestroy(): void {

@@ -1,0 +1,28 @@
+<div class="error-page">
+  <div class="error-content animate-slide-up">
+    <div class="error-icon">
+      <mat-icon>{{ errorIcon }}</mat-icon>
+    </div>
+    <h1>{{ errorTitle }}</h1>
+    <p>{{ errorMessage }}</p>
+    <div class="error-actions">
+      @if (showRetry) {
+        <button mat-raised-button color="primary" routerLink="/">
+          <mat-icon>refresh</mat-icon>
+          Try Again
+        </button>
+      }
+      @if (showScanAgain) {
+        <button mat-raised-button color="accent">
+          <mat-icon>qr_code_scanner</mat-icon>
+          Scan QR Code Again
+        </button>
+      }
+    </div>
+    @if (showHelp) {
+      <p class="help-text">
+        Having trouble? Make sure you're scanning the QR code from the desktop application.
+      </p>
+    }
+  </div>
+</div>

@@ -372,8 +372,30 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   // Actions
   // -------------------------------------------------------------------------
 
-  retryConnection(): void {
-    this.initializeFromUrl();
+  async retryConnection(): Promise<void> {
+    // Check if we have a stored session to retry
+    if (!this.socketService.hasStoredSession()) {
+      this.snackBar.open('No previous session found. Please scan a QR code.', '', { duration: 3000 });
+      return;
+    }
+
+    this.isInitializing.set(true);
+    this.initError.set(null);
+
+    try {
+      await this.socketService.retryFromStoredSession();
+      
+      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
+      this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
+      this.apiUrl.set(this.socketService.getApiUrl());
+      this.isInitializing.set(false);
+      this.snackBar.open('Reconnected to desktop!', '', { duration: 2000 });
+    } catch (error: any) {
+      console.error('[UploadComponent] Retry connection failed:', error);
+      this.isInitializing.set(false);
+      this.initError.set(error.message || 'Failed to reconnect. Please scan a new QR code.');
+      this.snackBar.open('Reconnection failed', '', { duration: 2000 });
+    }
   }
 
   disconnect(): void {

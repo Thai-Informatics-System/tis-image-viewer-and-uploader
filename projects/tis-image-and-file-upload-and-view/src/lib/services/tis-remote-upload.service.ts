@@ -264,7 +264,7 @@ export class TisRemoteUploadService implements OnDestroy {
   // ===========================================================================
 
   /**
-   * Send message to mobile device
+   * Send message to mobile device via channel
    */
   sendToMobile(type: string, data: any): void {
     if (!this.socketAdapter?.sendViaSocket) {
@@ -272,15 +272,21 @@ export class TisRemoteUploadService implements OnDestroy {
       return;
     }
 
-    this.socketAdapter.sendViaSocket({
-      action: this.channelName,
+    const message = {
+      action: 'send-to-channel',
       data: {
-        type,
-        ...data,
-        desktopDeviceId: this.deviceId,
-        timestamp: Date.now()
+        channel: this.channelName,
+        payload: {
+          type,
+          ...data,
+          desktopDeviceId: this.deviceId,
+          timestamp: Date.now()
+        }
       }
-    });
+    };
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Sending to mobile:`, message);
+    this.socketAdapter.sendViaSocket(message);
   }
 
   /**
@@ -318,15 +324,62 @@ export class TisRemoteUploadService implements OnDestroy {
   }
 
   /**
-   * Disconnect from mobile device
+   * Disconnect from mobile device - call API and clear local state
    */
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     console.log(`[${TisRemoteUploadService.COMPONENT}] Disconnecting from mobile...`);
 
-    // Notify mobile
-    this.sendToMobile('connectionState', { state: 'DISCONNECTED' });
+    const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
+
+    // Call disconnect API via socket
+    if (this.socketAdapter?.callApiViaSocket && mobileDeviceId) {
+      try {
+        const callApi = this.socketAdapter.callApiViaSocket.bind(this.socketAdapter);
+        const response = await new Promise<any>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Disconnect API timeout')), 10000);
+          
+          callApi('tis-image-mobile-uploader/disconnect-mobile-link', {
+            desktopDeviceId: this.deviceId,
+            mobileDeviceId: mobileDeviceId,
+            initiatedBy: 'desktop'
+          }).pipe(take(1)).subscribe({
+            next: (res) => {
+              clearTimeout(timeout);
+              resolve(res);
+            },
+            error: (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            }
+          });
+        });
+        console.log(`[${TisRemoteUploadService.COMPONENT}] Disconnect API response:`, response);
+      } catch (error: any) {
+        console.warn(`[${TisRemoteUploadService.COMPONENT}] Disconnect API call failed:`, error);
+        // Continue with local cleanup anyway
+      }
+    }
+
+    // Notify mobile via channel (backup notification)
+    this.sendToMobile('mobile-link-disconnected', { 
+      desktopDeviceId: this.deviceId,
+      initiatedBy: 'desktop'
+    });
 
     // Clear state
+    this.mobileConnection$.next(null);
+    this.connectionStatus$.next('disconnected');
+    this.pairingSession$.next(null);
+    this.clearMobileConnection();
+  }
+
+  /**
+   * Handle disconnect initiated from remote (mobile) side
+   */
+  private handleRemoteDisconnect(data: any): void {
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Mobile disconnected:`, data);
+    
+    // Clear state without calling API (mobile already initiated)
     this.mobileConnection$.next(null);
     this.connectionStatus$.next('disconnected');
     this.pairingSession$.next(null);
@@ -368,13 +421,18 @@ export class TisRemoteUploadService implements OnDestroy {
   private handleChannelMessage(message: any): void {
     console.log(`[${TisRemoteUploadService.COMPONENT}] Received:`, message);
 
-    // Extract message type and data
-    const type = message.type || message.data?.type;
-    const data = message.data || message.payload || message;
+    // Extract message type and data - handle nested payload structure
+    const payload = message.payload || message.data || message;
+    const type = payload.type || message.type;
+    const data = payload;
 
     switch (type) {
       case 'connectionState':
         this.handleConnectionState(data);
+        break;
+
+      case 'mobile-link-established':
+        this.handleMobileLinkEstablished(data);
         break;
 
       case 'image-uploaded':
@@ -383,6 +441,7 @@ export class TisRemoteUploadService implements OnDestroy {
         break;
 
       case 'disconnect':
+      case 'mobile-link-disconnected':
         this.handleMobileDisconnect(data);
         break;
 
@@ -393,6 +452,57 @@ export class TisRemoteUploadService implements OnDestroy {
         } else {
           console.log(`[${TisRemoteUploadService.COMPONENT}] Unknown message type:`, type);
         }
+    }
+  }
+
+  /**
+   * Handle mobile-link-established message
+   * This is sent when mobile successfully connects via the backend
+   */
+  private handleMobileLinkEstablished(data: any): void {
+    const mobileDeviceId = data.mobileDeviceId;
+    const mobileConnectionId = data.mobileConnectionId;
+    const userId = data.userId;
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Mobile link established:`, {
+      mobileDeviceId,
+      mobileConnectionId,
+      userId
+    });
+
+    if (mobileDeviceId) {
+      // Save mobile connection
+      const connectionInfo: MobileConnectionInfo = {
+        mobileDeviceId,
+        connectedAt: Date.now(),
+        lastActivity: Date.now()
+      };
+      this.mobileConnection$.next(connectionInfo);
+      this.saveMobileConnection(connectionInfo);
+
+      // Update status to connected
+      this.connectionStatus$.next('connected');
+
+      // Update session
+      const session = this.pairingSession$.value;
+      if (session) {
+        const updatedSession: TisPairingSession = {
+          ...session,
+          mobileDeviceId,
+          status: 'connected',
+          lastActivity: Date.now()
+        };
+        this.pairingSession$.next(updatedSession);
+      }
+
+      // Send SUCCESS acknowledgment to mobile
+      this.sendToMobile('connectionState', { 
+        state: 'SUCCESS',
+        desktopDeviceId: this.deviceId,
+        mobileConnectionId 
+      });
+
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Connection established with mobile device:`, mobileDeviceId);
     }
   }
 
