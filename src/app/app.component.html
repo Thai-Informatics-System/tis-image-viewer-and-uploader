@@ -58,6 +58,14 @@
 
     <br>
 
+    <h3 for="">Images for View only (With Delete Enabled) </h3>
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="true" [showDeleteButtonWhenDisabled]="true"
+        [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-for-view-only'})"
+        accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">
+    </tis-image-and-file-upload-and-view>
+
+    <br>
+
     <tis-image-and-file-upload-and-view type="image" viewType="list" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="true"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-list-for-view-only'})"
         accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()">

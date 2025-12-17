@@ -15,7 +15,7 @@
                                 <div cdkDrag (cdkDragStarted)="onDragStarted(i)" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
                                     <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" cdkDragHandle>
                                         <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                        <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
+                                        <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                         <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
                                         
                                         <!-- Loading overlay -->
@@ -56,7 +56,7 @@
                                 }
                                 <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)">
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
-                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
+                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                     <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
                                     
                                     <!-- Loading overlay -->
@@ -145,7 +145,7 @@
                             <div>
                                 <div class="compact-image-item" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" [style.background-size]="'contain'">
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon">description</mat-icon>
-                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
+                                    <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                     <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
                                     
                                     <!-- Loading overlay -->
@@ -202,7 +202,7 @@
                             <button type="button" mat-icon-button aria-label="View File" class="tis-icon-btn-sm tis-text-view" style="margin: 0px !important;" (click)="openFile(file)" *ngIf="!config.hiddenPreview">
                                 <mat-icon>visibility</mat-icon>
                             </button>
-                            <button type="button" mat-icon-button aria-label="Remove File" class="tis-icon-btn-sm tis-text-cancel" style="margin: 0px !important;" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="!disabled && !config.hiddenDeleteBtn">
+                            <button type="button" mat-icon-button aria-label="Remove File" class="tis-icon-btn-sm tis-text-cancel" style="margin: 0px !important;" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn">
                                 <mat-icon>delete</mat-icon>
                             </button>
                         </div>
