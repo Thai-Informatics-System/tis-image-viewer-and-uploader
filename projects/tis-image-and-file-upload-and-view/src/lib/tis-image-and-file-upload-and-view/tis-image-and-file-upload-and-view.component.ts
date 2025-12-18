@@ -72,6 +72,10 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   isMobile = false;
   isTab = false;
 
+  // Mobile upload state
+  isWaitingForMobileUpload = false;
+  mobileUploadFieldLabel: string = '';
+
   isHandset$!: Observable<boolean>;
   isTab$!: Observable<boolean>;
 
@@ -1873,6 +1877,9 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   private handleRemoteUpload(event: TisRemoteUploadEvent): void {
     console.log('[TisImageAndFileUploadAndView] Remote upload received:', event);
 
+    // Reset waiting state
+    this.isWaitingForMobileUpload = false;
+
     // Check if we've reached the limit
     if (this.config?.limit && this.filesArray.length >= this.config.limit) {
       this.helper.showErrorMsg(`Maximum limit of ${this.config.limit} files reached.`, 'Limit Reached');
@@ -1966,6 +1973,43 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
    */
   disconnectRemote(): void {
     this.remoteUploadService.disconnect();
+    this.isWaitingForMobileUpload = false;
+  }
+
+  /**
+   * Trigger upload from mobile - sends field request to mobile app
+   */
+  triggerMobileUpload(): void {
+    if (!this.isRemotePaired()) {
+      // Not connected - open QR dialog to connect first
+      this.openRemoteUploadDialog();
+      return;
+    }
+
+    // Already connected - send field request to mobile
+    const fieldInfo = {
+      label: this.label || `${this.type === 'image' ? 'Upload Image' : 'Upload File'}`,
+      accept: this.accept || (this.type === 'image' ? 'image/*' : '*'),
+      type: this.type,
+      entityType: this.entityType,
+      entityId: this.entityId,
+      isMultiple: this.config.isMultiple,
+      limit: this.config.limit,
+      remainingSlots: (this.config.limit || 10) - this.filesArray.length,
+      isCompressed: this.config.isCompressed
+    };
+
+    this.isWaitingForMobileUpload = true;
+    this.mobileUploadFieldLabel = fieldInfo.label;
+    this.remoteUploadService.sendFieldRequest(fieldInfo);
+  }
+
+  /**
+   * Cancel waiting for mobile upload
+   */
+  cancelMobileUpload(): void {
+    this.isWaitingForMobileUpload = false;
+    this.remoteUploadService.cancelFieldRequest();
   }
 
   ngOnDestroy(): void {

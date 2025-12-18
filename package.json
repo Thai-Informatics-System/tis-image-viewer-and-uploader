@@ -12,7 +12,7 @@
     "build:mobile": "ng build tis-mobile-upload",
     "build:mobile:stage": "ng build tis-mobile-upload --configuration=stage",
     "build:mobile:prod": "ng build tis-mobile-upload --configuration=production",
-    "serve:mobile": "ng serve tis-mobile-upload --configuration=development --port 4201"
+    "serve:mobile": "ng serve tis-mobile-upload --configuration=development --port 4202"
   },
   "private": true,
   "dependencies": {

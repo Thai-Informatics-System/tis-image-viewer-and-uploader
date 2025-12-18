@@ -290,6 +290,45 @@ export class TisRemoteUploadService implements OnDestroy {
   }
 
   /**
+   * Send field request to mobile - tells mobile to show upload UI for this field
+   */
+  sendFieldRequest(fieldInfo: {
+    label: string;
+    accept: string;
+    type: 'image' | 'file';
+    entityType?: string;
+    entityId?: any;
+    isMultiple?: boolean;
+    limit?: number;
+    remainingSlots?: number;
+    isCompressed?: boolean;
+  }): void {
+    if (!this.isConnectedToMobile()) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Not connected to mobile, cannot send field request`);
+      return;
+    }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Sending field request to mobile:`, fieldInfo);
+    
+    this.sendToMobile('field-request', {
+      field: fieldInfo,
+      requestId: `field-${Date.now()}`
+    });
+  }
+
+  /**
+   * Cancel current field request
+   */
+  cancelFieldRequest(): void {
+    if (!this.isConnectedToMobile()) {
+      return;
+    }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Canceling field request`);
+    this.sendToMobile('field-request-cancel', {});
+  }
+
+  /**
    * Accept mobile connection (send SUCCESS response)
    */
   private acceptMobileConnection(mobileDeviceId: string): void {

@@ -58,8 +58,8 @@
           <span>Mobile Connected!</span>
         </div>
         <p class="connected-message">
-          You can now upload images from your mobile device. 
-          Select a file/image upload field and the uploaded files will appear automatically.
+          You can now upload images from your mobile. Close this popup and click on the 
+          <strong>"Upload from Mobile"</strong> button to continue.
         </p>
         
         <!-- Uploaded Files -->
@@ -116,16 +116,12 @@
 
   <!-- Footer -->
   <div class="qr-dialog-footer">
-    <button mat-button *ngIf="isConnected" color="warn" (click)="disconnect()">
-      <mat-icon>link_off</mat-icon>
-      Disconnect
-    </button>
     <button mat-button *ngIf="!isConnected && !isLoading" (click)="connectToMobile()">
       <mat-icon>qr_code</mat-icon>
-      Connect & Upload via Mobile
+      Regenerate QR Code
     </button>
     <button mat-raised-button color="primary" (click)="close()">
-      {{ uploadedFiles.length > 0 ? 'Done' : 'Close' }}
+      {{ isConnected ? 'Close' : (uploadedFiles.length > 0 ? 'Done' : 'Close') }}
     </button>
   </div>
 </div>

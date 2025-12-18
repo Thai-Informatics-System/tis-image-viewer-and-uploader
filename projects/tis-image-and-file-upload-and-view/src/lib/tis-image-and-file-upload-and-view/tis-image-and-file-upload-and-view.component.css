@@ -486,11 +486,18 @@
     font-size: 12px;
     font-weight: 500;
     transition: background-color 0.2s ease;
-    margin-top: 8px;
 }
 
 .mobile-upload-btn:hover {
     background-color: var(--tis-primary-dark, #175080);
+}
+
+.mobile-upload-btn.connected {
+    background-color: #4caf50;
+}
+
+.mobile-upload-btn.connected:hover {
+    background-color: #388e3c;
 }
 
 .mobile-upload-btn mat-icon {
@@ -501,6 +508,97 @@
 
 .mobile-upload-btn span {
     white-space: nowrap;
+}
+
+/* Mobile Upload Actions Container */
+.mobile-upload-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+/* Disconnect Button */
+.disconnect-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.disconnect-btn:hover {
+    background-color: #d32f2f;
+}
+
+.disconnect-btn mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+/* Mobile Waiting State */
+.mobile-waiting-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    width: 100%;
+}
+
+.mobile-waiting-state .waiting-text {
+    font-size: 12px;
+    color: #666;
+}
+
+.mobile-waiting-state .cancel-mobile-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: transparent;
+    color: #666;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.mobile-waiting-state .cancel-mobile-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.mobile-waiting-state .cancel-mobile-btn mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.cancel-mobile-btn-text {
+    margin-top: 8px;
+    padding: 6px 16px;
+    background-color: transparent;
+    color: var(--tis-primary, #1F6AAD);
+    border: 1px solid var(--tis-primary, #1F6AAD);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s ease;
+}
+
+.cancel-mobile-btn-text:hover {
+    background-color: rgba(31, 106, 173, 0.1);
 }
 
 /* Mobile Upload Button for list view */

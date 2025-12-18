@@ -576,13 +576,14 @@ export class MobileSocketService implements OnDestroy {
     // This ensures we don't miss the mobile-link-established message
     const connectionPromise = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        console.warn(`[${MobileSocketService.COMPONENT}] Connection timeout - desktop did not respond in 30s`);
         reject(new Error('Desktop did not respond. Please ensure the desktop app is open.'));
       }, 30000);
 
       const sub = this._desktopMessages$.subscribe(msg => {
         // Handle mobile-link-established from backend (via desktop channel)
         if (msg.type === 'mobile-link-established') {
-          console.log(`[${MobileSocketService.COMPONENT}] Received mobile-link-established:`, msg);
+          console.log(`[${MobileSocketService.COMPONENT}] ✅ Mobile link established`);
           clearTimeout(timeout);
           sub.unsubscribe();
           this.transitionTo('CONNECTED');
@@ -590,6 +591,7 @@ export class MobileSocketService implements OnDestroy {
         }
         // Also handle legacy SUCCESS response
         if (msg.type === 'connectionState' && (msg.state === 'SUCCESS' || msg.connectionState === 'SUCCESS')) {
+          console.log(`[${MobileSocketService.COMPONENT}] ✅ Connection confirmed (legacy)`);
           clearTimeout(timeout);
           sub.unsubscribe();
           this.transitionTo('CONNECTED');
@@ -597,7 +599,7 @@ export class MobileSocketService implements OnDestroy {
         }
         // Handle disconnect from desktop
         if (msg.type === 'mobile-link-disconnected' || msg.type === 'disconnect') {
-          console.log(`[${MobileSocketService.COMPONENT}] Desktop disconnected:`, msg);
+          console.log(`[${MobileSocketService.COMPONENT}] Desktop disconnected`);
           clearTimeout(timeout);
           sub.unsubscribe();
           this.handleRemoteDisconnect();
@@ -622,7 +624,11 @@ export class MobileSocketService implements OnDestroy {
       // Continue anyway - the channel subscription should still work
     }
 
-    this.transitionTo('WAITING_FOR_DESKTOP');
+    // Only transition to WAITING_FOR_DESKTOP if we haven't already connected
+    // (the mobile-link-established message might arrive before the API response)
+    if (this.connectionState !== 'CONNECTED') {
+      this.transitionTo('WAITING_FOR_DESKTOP');
+    }
 
     // Wait for the connection response
     return connectionPromise;
@@ -708,7 +714,10 @@ export class MobileSocketService implements OnDestroy {
   private handleMessage(data: string): void {
     try {
       const parsed = JSON.parse(data);
-      console.log(`[${MobileSocketService.COMPONENT}] Received:`, parsed);
+      // Only log non-ping/pong messages to reduce noise
+      if (parsed.channel !== 'pong' && parsed.action !== 'pong') {
+        console.log(`[${MobileSocketService.COMPONENT}] Message received:`, parsed.channel || parsed.action, parsed.payload?.type || '');
+      }
 
       // Handle pong
       if (parsed.action === 'pong' || parsed.channel === 'pong') {
@@ -720,8 +729,10 @@ export class MobileSocketService implements OnDestroy {
       if (parsed.channel === this.channelName || 
           (Array.isArray(parsed.channel) && parsed.channel.includes(this.channelName))) {
         const message: DesktopMessage = parsed.data || parsed.payload || parsed;
+        console.log(`[${MobileSocketService.COMPONENT}] ✅ Desktop message received:`, message);
         this._desktopMessages$.next(message);
       }
+      // Note: Other channels (API responses, subscribe confirmations, welcome) are handled by channel routing below
 
       // Route to channel subscribers (including API responses)
       if (parsed.channel) {
@@ -777,15 +788,19 @@ export class MobileSocketService implements OnDestroy {
     if (!info) {
       info = { subject: new Subject<any>(), closeAfterFirstResponse: closeChannelAfterFirstResponse, isActive: true };
       this.activeChannelSubscriptions.set(channelName, info);
-      console.log(`[${MobileSocketService.COMPONENT}] Creating subscription: ${channelName}`);
     } else {
       info.isActive = true;
       info.closeAfterFirstResponse = closeChannelAfterFirstResponse;
     }
 
     // Send subscription to server for new channels (not prefix channels)
-    if (this.connectionState === 'CONNECTED' && isNew && !channelName.startsWith('_prefix_')) {
+    // Check if socket is open instead of connection state, because we need to subscribe
+    // during establishMobileUploadLink() before connection state is 'CONNECTED'
+    const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
+    if (isSocketOpen && isNew && !channelName.startsWith('_prefix_')) {
       this.sendChannelSubscription(channelName);
+    } else if (!isSocketOpen && isNew) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Socket not open, cannot send subscription for: ${channelName}`);
     }
 
     let channel = this.channels.get(channelName);
@@ -800,10 +815,8 @@ export class MobileSocketService implements OnDestroy {
    * Subscribe to a channel prefix (for receiving messages on multiple channels with same prefix)
    */
   subscribeToChannelPrefix(prefix: string): ChannelStream {
-    console.log(`[${MobileSocketService.COMPONENT}] Prefix subscribe "${prefix}"`);
     if (!this.activePrefixes.has(prefix)) {
       this.activePrefixes.add(prefix);
-      console.log(`[${MobileSocketService.COMPONENT}] Added new prefix subscription: ${prefix}`);
     }
     
     const tempChannelName = `_prefix_${prefix}`;
@@ -926,14 +939,24 @@ export class MobileSocketService implements OnDestroy {
 
     this.heartbeatInterval = setInterval(() => {
       if (this.socket?.readyState === WebSocket.OPEN) {
-        // Send ping via proper route (fire and forget, don't wait for response)
-        this.sendRawMessage({ action: 'ping' });
-
-        // Check if pong received
-        if (Date.now() - this.lastPongReceived > 45000) {
-          console.warn(`[${MobileSocketService.COMPONENT}] No pong received, reconnecting...`);
+        const now = Date.now();
+        
+        // Check if pong received from last ping (before sending new one)
+        if (now - this.lastPongReceived > 45000) {
+          console.warn(`[${MobileSocketService.COMPONENT}] No pong received in 45s, reconnecting...`);
           this.socket?.close();
+          return;
         }
+
+        // Send ping via API route and wait for response
+        this.callApiViaSocket('ping', { timestamp: now }).pipe(take(1)).subscribe({
+          next: () => {
+            this.lastPongReceived = Date.now();
+          },
+          error: (err: any) => {
+            console.warn(`[${MobileSocketService.COMPONENT}] Heartbeat ping error:`, err);
+          }
+        });
       }
     }, 30000);
   }

@@ -253,6 +253,30 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
         break;
 
+      case 'field-request':
+        // Desktop requests upload for a specific field - show upload UI
+        const field = message['field'];
+        if (field) {
+          this.desktopFieldInfo.set({
+            label: field.label,
+            accept: field.accept,
+            type: field.type || 'image',
+            entityType: field.entityType,
+            entityId: field.entityId,
+            isMultiple: field.isMultiple,
+            limit: field.remainingSlots || field.limit,
+            isCompressed: field.isCompressed
+          });
+          this.snackBar.open(`Upload requested: ${field.label}`, '', { duration: 3000 });
+        }
+        break;
+
+      case 'field-request-cancel':
+        // Desktop cancelled the field request
+        this.desktopFieldInfo.set(null);
+        this.snackBar.open('Upload request cancelled', '', { duration: 2000 });
+        break;
+
       case 'session-ended':
         this.snackBar.open('Session ended by desktop', '', { duration: 3000 });
         this.router.navigate(['/error'], { queryParams: { type: 'session-expired' } });
