@@ -1930,7 +1930,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     }
 
     const dialogData: TisQrCodeDialogData = {
-      title: this.dialogConfig?.title || 'Upload from Mobile',
+      title: 'Upload from Mobile',
       subtitle: `Scan this QR code to upload ${this.type === 'image' ? 'images' : 'files'} from your mobile device`,
       qrSize: 200,
       showCountdown: true,
