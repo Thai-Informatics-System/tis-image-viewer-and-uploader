@@ -849,7 +849,7 @@ export class MobileSocketService implements OnDestroy {
 
       // Notify server of unsubscription
       if (this.connectionState === 'CONNECTED' && !channelName.startsWith('_prefix_')) {
-        this.sendRawMessage({ action: 'unsubscribe', data: { channel: channelName } });
+        // this.sendRawMessage({ action: 'unsubscribe', data: { channel: channelName } });
       }
 
       // Handle prefix channels
