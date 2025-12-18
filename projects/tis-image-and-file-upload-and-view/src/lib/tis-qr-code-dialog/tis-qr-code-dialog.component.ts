@@ -86,11 +86,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       this.isConnected = true;
       this.connectionStatus = 'connected';
       this.isLoading = false;
-      
-      // Send field info to mobile since already connected
-      if (this.data.fieldInfo) {
-        this.sendFieldInfoToMobile();
-      }
     } else {
       // No existing connection, generate QR code
       this.generateQrCode();
@@ -121,13 +116,7 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(status => {
         this.connectionStatus = status;
-        const wasConnected = this.isConnected;
         this.isConnected = status === 'connected';
-        
-        // Send field info when first connected
-        if (!wasConnected && this.isConnected && this.data.fieldInfo) {
-          this.sendFieldInfoToMobile();
-        }
       });
 
     // Mobile connection changes
@@ -154,16 +143,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       .subscribe(error => {
         console.error('[TisQrCodeDialog] Error:', error);
       });
-  }
-
-  /**
-   * Send field configuration to mobile device
-   */
-  private sendFieldInfoToMobile(): void {
-    if (!this.data.fieldInfo) return;
-    
-    console.log('[TisQrCodeDialog] Sending field info to mobile:', this.data.fieldInfo);
-    this.remoteUploadService.sendToMobile('field-info', this.data.fieldInfo);
   }
 
   private startCountdown(): void {

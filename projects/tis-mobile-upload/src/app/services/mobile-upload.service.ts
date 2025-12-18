@@ -83,12 +83,12 @@ export class MobileUploadService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Send uploaded file data to desktop
+   * Send uploaded file data to desktop via API
    * Called when the library's onUploaded event fires
    * 
    * @param uploadedData - The data from library's onUploaded event
    */
-  sendToDesktop(uploadedData: any): void {
+  async sendToDesktop(uploadedData: any): Promise<void> {
     try {
       // Normalize the data (library can emit single file or array)
       const files = this.normalizeUploadedData(uploadedData);
@@ -101,8 +101,10 @@ export class MobileUploadService {
       // Store locally
       this._uploadedFiles.update(current => [...current, ...files]);
 
-      // Send to desktop via socket
-      this.socketService.sendToDesktop('file-uploaded', {
+      // Send to desktop via API call
+      await this.socketService.callApiViaSocketPromise('tis-image-mobile-uploader/file-uploaded', {
+        mobileDeviceId: this.socketService.getMobileDeviceId(),
+        desktopDeviceId: this.socketService.getDesktopDeviceId(),
         files,
         totalCount: files.length,
         uploadedAt: Date.now()

@@ -690,25 +690,6 @@ export class MobileSocketService implements OnDestroy {
   }
 
   /**
-   * Send message to desktop via the channel (direct socket message, no API call)
-   */
-  sendToDesktop(type: string, data: any): void {
-    const message = {
-      action: 'send-to-channel',
-      data: {
-        channel: this.channelName,
-        payload: {
-          type,
-          ...data,
-          mobileDeviceId: this.mobileDeviceId,
-          timestamp: Date.now()
-        }
-      }
-    };
-    this.sendRawMessage(message);
-  }
-
-  /**
    * Handle incoming WebSocket message
    */
   private handleMessage(data: string): void {
@@ -1071,12 +1052,21 @@ export class MobileSocketService implements OnDestroy {
   // Disconnect & Cleanup
   // ===========================================================================
 
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     console.log(`[${MobileSocketService.COMPONENT}] Disconnecting...`);
 
-    // Notify desktop
+    // Notify backend via API
     if (this.isConnected()) {
-      this.sendToDesktop('disconnect', { reason: 'user_initiated' });
+      try {
+        await this.callApiViaSocketPromise('tis-image-mobile-uploader/disconnect-mobile-link', {
+          mobileDeviceId: this.mobileDeviceId,
+          desktopDeviceId: this.desktopDeviceId,
+          initiatedBy: 'mobile'
+        });
+      } catch (error: any) {
+        console.warn(`[${MobileSocketService.COMPONENT}] Disconnect API call failed:`, error);
+        // Continue with local cleanup anyway
+      }
     }
 
     this.cleanup();

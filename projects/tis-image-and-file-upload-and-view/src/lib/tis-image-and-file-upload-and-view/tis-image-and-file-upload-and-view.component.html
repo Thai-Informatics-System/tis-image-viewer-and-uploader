@@ -93,7 +93,7 @@
                                         <div class="mobile-waiting-state" (click)="$event.stopPropagation()">
                                             <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
                                             <span class="waiting-text">Waiting for mobile...</span>
-                                            <button type="button" class="cancel-mobile-btn" (click)="cancelMobileUpload()" title="Cancel">
+                                            <button type="button" class="cancel-mobile-btn" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Cancel">
                                                 <mat-icon>close</mat-icon>
                                             </button>
                                         </div>
@@ -102,12 +102,12 @@
                                         <!-- Mobile Upload Button -->
                                         @if(isRemoteUploadAvailable()){
                                             <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
+                                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
                                                     <mat-icon>smartphone</mat-icon>
                                                     <span>{{ isRemotePaired() ? 'Upload from Mobile' : 'Connect Mobile' }}</span>
                                                 </button>
                                                 @if(isRemotePaired()) {
-                                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote()" title="Disconnect Mobile">
+                                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote(); $event.stopPropagation(); $event.preventDefault()" title="Disconnect Mobile">
                                                         <mat-icon>link_off</mat-icon>
                                                     </button>
                                                 }
@@ -128,7 +128,7 @@
                             <mat-progress-spinner diameter="32" mode="indeterminate"></mat-progress-spinner>
                             <p style="text-align: center; font-size: 14px; margin: 8px 0 0 0;">Waiting for upload from mobile...</p>
                             <small style="color: #666;">Please upload from your mobile device</small>
-                            <button type="button" class="cancel-mobile-btn-text" (click)="cancelMobileUpload()">
+                            <button type="button" class="cancel-mobile-btn-text" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()">
                                 Cancel
                             </button>
                         </div>
@@ -144,12 +144,12 @@
                         <!-- Mobile Upload Button -->
                         @if(isRemoteUploadAvailable()){
                             <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
+                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
                                     <mat-icon>smartphone</mat-icon>
                                     <span>{{ isRemotePaired() ? 'Upload from Mobile' : 'Connect Mobile' }}</span>
                                 </button>
                                 @if(isRemotePaired()) {
-                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote()" title="Disconnect Mobile">
+                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote(); $event.stopPropagation(); $event.preventDefault()" title="Disconnect Mobile">
                                         <mat-icon>link_off</mat-icon>
                                     </button>
                                 }

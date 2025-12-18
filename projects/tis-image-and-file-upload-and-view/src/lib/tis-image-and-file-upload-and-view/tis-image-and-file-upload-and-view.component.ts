@@ -1971,15 +1971,16 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   /**
    * Disconnect from paired mobile device
    */
-  disconnectRemote(): void {
-    this.remoteUploadService.disconnect();
+  async disconnectRemote(): Promise<void> {
+    await this.remoteUploadService.disconnect();
     this.isWaitingForMobileUpload = false;
+    this.mobileUploadFieldLabel = '';
   }
 
   /**
    * Trigger upload from mobile - sends field request to mobile app
    */
-  triggerMobileUpload(): void {
+  async triggerMobileUpload(): Promise<void> {
     if (!this.isRemotePaired()) {
       // Not connected - open QR dialog to connect first
       this.openRemoteUploadDialog();
@@ -2001,15 +2002,15 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
 
     this.isWaitingForMobileUpload = true;
     this.mobileUploadFieldLabel = fieldInfo.label;
-    this.remoteUploadService.sendFieldRequest(fieldInfo);
+    await this.remoteUploadService.sendFieldRequest(fieldInfo);
   }
 
   /**
    * Cancel waiting for mobile upload
    */
-  cancelMobileUpload(): void {
+  async cancelMobileUpload(): Promise<void> {
     this.isWaitingForMobileUpload = false;
-    this.remoteUploadService.cancelFieldRequest();
+    await this.remoteUploadService.cancelFieldRequest();
   }
 
   ngOnDestroy(): void {

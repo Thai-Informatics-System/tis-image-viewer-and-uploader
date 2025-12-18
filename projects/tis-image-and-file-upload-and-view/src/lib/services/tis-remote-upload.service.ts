@@ -260,39 +260,39 @@ export class TisRemoteUploadService implements OnDestroy {
   }
 
   // ===========================================================================
-  // Mobile Communication
+  // Mobile Communication (via API calls)
   // ===========================================================================
 
   /**
-   * Send message to mobile device via channel
+   * Call API via socket with timeout - helper method
    */
-  sendToMobile(type: string, data: any): void {
-    if (!this.socketAdapter?.sendViaSocket) {
-      console.warn(`[${TisRemoteUploadService.COMPONENT}] sendViaSocket not available`);
-      return;
-    }
-
-    const message = {
-      action: 'send-to-channel',
-      data: {
-        channel: this.channelName,
-        payload: {
-          type,
-          ...data,
-          desktopDeviceId: this.deviceId,
-          timestamp: Date.now()
-        }
+  private callApiWithTimeout(route: string, body: any, timeoutMs = 10000): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!this.socketAdapter?.callApiViaSocket) {
+        reject(new Error('callApiViaSocket not available'));
+        return;
       }
-    };
 
-    console.log(`[${TisRemoteUploadService.COMPONENT}] Sending to mobile:`, message);
-    this.socketAdapter.sendViaSocket(message);
+      const timeout = setTimeout(() => reject(new Error(`API call timeout: ${route}`)), timeoutMs);
+      const callApi = this.socketAdapter.callApiViaSocket.bind(this.socketAdapter);
+
+      callApi(route, body).pipe(take(1)).subscribe({
+        next: (res) => {
+          clearTimeout(timeout);
+          resolve(res);
+        },
+        error: (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        }
+      });
+    });
   }
 
   /**
    * Send field request to mobile - tells mobile to show upload UI for this field
    */
-  sendFieldRequest(fieldInfo: {
+  async sendFieldRequest(fieldInfo: {
     label: string;
     accept: string;
     type: 'image' | 'file';
@@ -302,34 +302,54 @@ export class TisRemoteUploadService implements OnDestroy {
     limit?: number;
     remainingSlots?: number;
     isCompressed?: boolean;
-  }): void {
+  }): Promise<void> {
     if (!this.isConnectedToMobile()) {
       console.warn(`[${TisRemoteUploadService.COMPONENT}] Not connected to mobile, cannot send field request`);
       return;
     }
 
+    const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
     console.log(`[${TisRemoteUploadService.COMPONENT}] Sending field request to mobile:`, fieldInfo);
-    
-    this.sendToMobile('field-request', {
-      field: fieldInfo,
-      requestId: `field-${Date.now()}`
-    });
+
+    try {
+      const response = await this.callApiWithTimeout('tis-image-mobile-uploader/field-request', {
+        desktopDeviceId: this.deviceId,
+        mobileDeviceId: mobileDeviceId,
+        channel: this.channelName,
+        field: fieldInfo,
+        requestId: `field-${Date.now()}`
+      });
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Field request sent:`, response);
+    } catch (error: any) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Field request failed:`, error);
+    }
   }
 
   /**
    * Cancel current field request
    */
-  cancelFieldRequest(): void {
+  async cancelFieldRequest(): Promise<void> {
     if (!this.isConnectedToMobile()) {
       return;
     }
 
+    const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
     console.log(`[${TisRemoteUploadService.COMPONENT}] Canceling field request`);
-    this.sendToMobile('field-request-cancel', {});
+
+    try {
+      await this.callApiWithTimeout('tis-image-mobile-uploader/cancel-field-request', {
+        desktopDeviceId: this.deviceId,
+        mobileDeviceId: mobileDeviceId,
+        channel: this.channelName
+      });
+    } catch (error: any) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cancel field request failed:`, error);
+    }
   }
 
   /**
-   * Accept mobile connection (send SUCCESS response)
+   * Accept mobile connection - update local state
+   * Note: Backend already broadcasts mobile-link-established to both parties
    */
   private acceptMobileConnection(mobileDeviceId: string): void {
     console.log(`[${TisRemoteUploadService.COMPONENT}] Accepting mobile connection:`, mobileDeviceId);
@@ -357,9 +377,6 @@ export class TisRemoteUploadService implements OnDestroy {
       };
       this.pairingSession$.next(updatedSession);
     }
-
-    // Send SUCCESS to mobile
-    this.sendToMobile('connectionState', { state: 'SUCCESS' });
   }
 
   /**
@@ -398,12 +415,6 @@ export class TisRemoteUploadService implements OnDestroy {
         // Continue with local cleanup anyway
       }
     }
-
-    // Notify mobile via channel (backup notification)
-    this.sendToMobile('mobile-link-disconnected', { 
-      desktopDeviceId: this.deviceId,
-      initiatedBy: 'desktop'
-    });
 
     // Clear state
     this.mobileConnection$.next(null);
@@ -474,6 +485,7 @@ export class TisRemoteUploadService implements OnDestroy {
         this.handleMobileLinkEstablished(data);
         break;
 
+      case 'file-uploaded':
       case 'image-uploaded':
       case 'upload_complete':
         this.handleUploadComplete(message);
@@ -533,13 +545,6 @@ export class TisRemoteUploadService implements OnDestroy {
         };
         this.pairingSession$.next(updatedSession);
       }
-
-      // Send SUCCESS acknowledgment to mobile
-      this.sendToMobile('connectionState', { 
-        state: 'SUCCESS',
-        desktopDeviceId: this.deviceId,
-        mobileConnectionId 
-      });
 
       console.log(`[${TisRemoteUploadService.COMPONENT}] Connection established with mobile device:`, mobileDeviceId);
     }
