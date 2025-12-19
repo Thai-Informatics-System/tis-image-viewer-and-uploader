@@ -623,23 +623,38 @@ export class TisRemoteUploadService implements OnDestroy {
 
     const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
     if (!mobileDeviceId || !this.deviceId) {
-      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot start health check - missing device IDs`);
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot start health check - missing device IDs`, {
+        mobileDeviceId,
+        desktopDeviceId: this.deviceId
+      });
       return;
     }
 
-    console.log(`[${TisRemoteUploadService.COMPONENT}] Starting health check (every ${HEALTH_CHECK_INTERVAL / 1000}s)`);
+    if (!this.socketAdapter?.callApiViaSocket) {
+      console.error(`[${TisRemoteUploadService.COMPONENT}] Cannot start health check - socketAdapter.callApiViaSocket not available`);
+      return;
+    }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Starting health check (every ${HEALTH_CHECK_INTERVAL / 1000}s)`, {
+      mobileDeviceId,
+      desktopDeviceId: this.deviceId
+    });
 
     // Set initial checking state (blinking)
     this.isCheckingStatus$.next(true);
 
     // Run first check immediately
-    this.checkDevicesOnline();
+    this.checkDevicesOnline().catch(err => {
+      console.error(`[${TisRemoteUploadService.COMPONENT}] Initial health check failed:`, err);
+    });
 
     // Then run periodically
     this.healthCheckSubscription = interval(HEALTH_CHECK_INTERVAL)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        this.checkDevicesOnline();
+        this.checkDevicesOnline().catch(err => {
+          console.error(`[${TisRemoteUploadService.COMPONENT}] Periodic health check failed:`, err);
+        });
       });
   }
 
@@ -662,15 +677,25 @@ export class TisRemoteUploadService implements OnDestroy {
     const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
     
     if (!mobileDeviceId || !this.deviceId) {
-      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot check devices - missing device IDs`);
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot check devices - missing device IDs`, {
+        mobileDeviceId,
+        desktopDeviceId: this.deviceId
+      });
       return null;
     }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Checking devices online status...`, {
+      desktopDeviceId: this.deviceId,
+      mobileDeviceId: mobileDeviceId
+    });
 
     try {
       const response = await this.callApiWithTimeout('tis-image-mobile-uploader/check-devices-online', {
         desktopDeviceId: this.deviceId,
         mobileDeviceId: mobileDeviceId
       }, 15000);
+
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Check devices response:`, response);
 
       // Response structure: { body: { data: { desktop: {...}, mobile: {...} } } }
       const data = response?.body?.data || response?.data || response;

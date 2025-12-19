@@ -140,4 +140,14 @@ export class TisViewConnectionDialogComponent implements OnInit, OnDestroy {
       return `${minutesAgo}m ago`;
     }
   }
+
+  /**
+   * Truncate device ID to show first 8 and last 8 characters
+   */
+  truncateDeviceId(deviceId: string): string {
+    if (!deviceId || deviceId.length <= 20) {
+      return deviceId;
+    }
+    return `${deviceId.substring(0, 8)}...${deviceId.substring(deviceId.length - 8)}`;
+  }
 }
