@@ -420,12 +420,25 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       console.log('[UploadComponent] Using upload endpoint:', endpoint, 'for type:', uploadType, 'isImage:', isImage);
 
+      // Get entityType from desktop field info
+      const fieldInfo = this.desktopFieldInfo();
+      const entityType = fieldInfo?.entityType;
+
       // Step 1: Get presigned upload URL
+      const requestBody: any = {
+        fileName: file.name,
+        contentType: file.type
+      };
+
+      // Add entityType if available
+      if (entityType) {
+        requestBody.type = entityType;
+      }
+
+      console.log('[UploadComponent] Requesting presigned URL with:', requestBody);
+
       const uploadUrlResponse = await firstValueFrom(
-        this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}${endpoint}`, {
-          fileName: file.name,
-          contentType: file.type
-        })
+        this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}${endpoint}`, requestBody)
       );
 
       if (!uploadUrlResponse?.uploadUrl || !uploadUrlResponse?.s3Url) {
