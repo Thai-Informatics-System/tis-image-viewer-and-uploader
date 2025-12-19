@@ -4,6 +4,47 @@
 
 This file establishes guidelines for AI assistants (GitHub Copilot, Claude, etc.) working on this project.
 
+## Critical Rule: Keep Architecture Documentation in Sync
+
+**IMPORTANT**: Whenever you complete any task that involves changes to:
+- Project structure or architecture
+- Component interfaces or APIs
+- WebSocket messages or communication protocols
+- State management or data flow
+- Configuration options or properties
+- New features or major refactoring
+
+**YOU MUST** update the `.github/instructions/architecture.instructions.md` file to reflect these changes.
+
+### When to Update Architecture Documentation
+
+Update `architecture.instructions.md` after completing:
+
+✅ Adding new components or services
+✅ Modifying existing interfaces (TisSocketAdapter, TisRemoteUploadConfig, etc.)
+✅ Changing WebSocket message formats
+✅ Adding/modifying API endpoints
+✅ Updating state machines or flow diagrams
+✅ Adding new configuration options
+✅ Refactoring major features
+✅ Changing component properties (@Input/@Output)
+
+### How to Update
+
+1. Complete your implementation task first
+2. Review what changed from an architecture perspective
+3. Update the relevant sections in `architecture.instructions.md`:
+   - Flow diagrams
+   - State machines
+   - Interface definitions
+   - Sequence diagrams
+   - Component properties
+   - Configuration examples
+4. Update the "Last Updated" timestamp at the bottom
+5. Commit architecture documentation changes WITH your implementation changes
+
+**Goal**: The architecture documentation should always accurately reflect the current state of the codebase, serving as the single source of truth for AI assistants and developers.
+
 ## Instruction Files
 
 Whenever an important decision is made or a key finding is discovered about this project, the LLM should:

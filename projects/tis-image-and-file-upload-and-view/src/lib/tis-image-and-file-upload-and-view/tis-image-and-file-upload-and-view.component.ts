@@ -75,6 +75,9 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   // Mobile upload state
   isWaitingForMobileUpload = false;
   mobileUploadFieldLabel: string = '';
+  
+  // Pending files from mobile (waiting to be accepted/rejected)
+  pendingFiles: TisRemoteUploadEvent[] = [];
 
   isHandset$!: Observable<boolean>;
   isTab$!: Observable<boolean>;
@@ -1862,11 +1865,29 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     if (this.remoteUploadConfig?.enabled && this.remoteUploadConfig?.socketAdapter) {
       this.remoteUploadService.configure(this.remoteUploadConfig);
 
-      // Subscribe to remote uploads
+      // Subscribe to remote uploads (when files are accepted)
       this.remoteUploadService.getRemoteUploads()
         .pipe(takeUntil(this.destroy$))
         .subscribe(event => {
           this.handleRemoteUpload(event);
+        });
+
+      // Subscribe to pending files (files from mobile waiting to be accepted)
+      this.remoteUploadService.getPendingFiles()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(files => {
+          this.pendingFiles = files;
+          // Reset waiting state when we have pending files
+          if (files.length > 0) {
+            this.isWaitingForMobileUpload = false;
+          }
+        });
+
+      // Subscribe to waiting state
+      this.remoteUploadService.getIsWaitingForUpload()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(waiting => {
+          this.isWaitingForMobileUpload = waiting;
         });
     }
   }
@@ -2011,6 +2032,58 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   async cancelMobileUpload(): Promise<void> {
     this.isWaitingForMobileUpload = false;
     await this.remoteUploadService.cancelFieldRequest();
+  }
+
+  /**
+   * Accept a pending file from mobile upload
+   * This calls the onFileAccept callback if provided, then handles the file
+   */
+  acceptPendingFile(pendingFile: TisRemoteUploadEvent): void {
+    // Call the user-provided callback if available
+    if (this.remoteUploadConfig?.onFileAccept) {
+      this.remoteUploadConfig.onFileAccept(pendingFile.file);
+    }
+
+    // Accept the file in the service (removes from pending, emits to remoteUpload$)
+    this.remoteUploadService.acceptPendingFile(pendingFile);
+  }
+
+  /**
+   * Reject a pending file from mobile upload
+   */
+  rejectPendingFile(pendingFile: TisRemoteUploadEvent): void {
+    this.remoteUploadService.rejectPendingFile(pendingFile);
+  }
+
+  /**
+   * Open dialog showing connection status with disconnect option
+   */
+  openViewConnectionDialog(): void {
+    // TODO: Create a TisViewConnectionDialogComponent
+    // For now, use confirmation dialog to offer disconnect
+    const dialogRef = this.dialog.open(TisConfirmationDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Mobile Connection',
+        message: 'You are connected to a mobile device. Would you like to disconnect?',
+        confirmText: 'Disconnect',
+        cancelText: 'Close'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.disconnectRemote();
+      }
+    });
+  }
+
+  /**
+   * Check if a MIME type is an image type
+   */
+  isImageMimeType(mimeType: string | undefined): boolean {
+    if (!mimeType) return false;
+    return mimeType.startsWith('image/');
   }
 
   ngOnDestroy(): void {

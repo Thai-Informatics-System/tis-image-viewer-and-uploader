@@ -760,3 +760,90 @@
     }
   }
 }
+
+// ============================================================================
+// Device Status Dot
+// ============================================================================
+
+.device-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.online {
+    background-color: #4caf50;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+  }
+
+  &.offline {
+    background-color: #f44336;
+    box-shadow: 0 0 6px rgba(244, 67, 54, 0.5);
+  }
+
+  &.checking {
+    background-color: #ff9800;
+    animation: blink 1s ease-in-out infinite;
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+// ============================================================================
+// Transfer Status
+// ============================================================================
+
+.transfer-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  background: white;
+
+  &.ready {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #2e7d32;
+
+    mat-icon {
+      color: #4caf50;
+    }
+  }
+
+  &.not-ready {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #e65100;
+
+    mat-icon {
+      color: #ff9800;
+    }
+  }
+
+  .refresh-status-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    mat-icon.spinning {
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

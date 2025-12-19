@@ -31,6 +31,7 @@
       <!-- Device Info Card -->
       <div class="device-info-card">
         <div class="device-row">
+          <div class="device-status-dot" [ngClass]="getDesktopStatusClass()"></div>
           <mat-icon class="device-icon desktop">computer</mat-icon>
           <div class="device-details">
             <span class="device-label">THIS DEVICE</span>
@@ -43,12 +44,25 @@
         </div>
         
         <div class="device-row" *ngIf="mobileDeviceId">
+          <div class="device-status-dot" [ngClass]="getMobileStatusClass()"></div>
           <mat-icon class="device-icon mobile">smartphone</mat-icon>
           <div class="device-details">
             <span class="device-label">CONNECTED MOBILE</span>
             <span class="device-id" [title]="mobileDeviceId">{{ formatDeviceId(mobileDeviceId) }}</span>
           </div>
         </div>
+      </div>
+
+      <!-- Transfer Status -->
+      <div *ngIf="isConnected && devicesStatus" class="transfer-status" [ngClass]="{'ready': isReadyForTransfer(), 'not-ready': !isReadyForTransfer()}">
+        <mat-icon>{{ isReadyForTransfer() ? 'check_circle' : 'warning' }}</mat-icon>
+        <span *ngIf="isReadyForTransfer()">Ready for transfer</span>
+        <span *ngIf="!isReadyForTransfer()">
+          {{ !devicesStatus.mobile?.isOnline ? 'Mobile device is offline' : 'Desktop device is offline' }}
+        </span>
+        <button mat-icon-button class="refresh-status-btn" (click)="refreshStatus()" [disabled]="isCheckingStatus" title="Refresh status">
+          <mat-icon [class.spinning]="isCheckingStatus">refresh</mat-icon>
+        </button>
       </div>
 
       <!-- Connected State -->

@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, Observable, Subject, Subscription, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription, throwError, interval } from 'rxjs';
 import { catchError, take, takeUntil, timeout } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import {
@@ -14,6 +14,7 @@ import {
 const DEFAULT_PAIRING_TTL = 24 * 60 * 60 * 1000; // 24 hours
 const DEFAULT_STORAGE_KEY = 'tis-remote-upload-session';
 const DEFAULT_QR_EXPIRY = 300; // 5 minutes
+const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 
 /**
  * Mobile connection info stored in localStorage
@@ -22,6 +23,43 @@ interface MobileConnectionInfo {
   mobileDeviceId: string;
   connectedAt: number;
   lastActivity: number;
+}
+
+/**
+ * Field request info for tracking current upload request
+ */
+export interface FieldRequestInfo {
+  label: string;
+  accept: string;
+  type: 'image' | 'file';
+  entityType?: string;
+  entityId?: any;
+  isMultiple?: boolean;
+  limit?: number;
+  remainingSlots?: number;
+  isCompressed?: boolean;
+  requestId?: string;
+  requestedAt: number;
+}
+
+/**
+ * Device online status from health check API
+ */
+export interface DeviceOnlineStatus {
+  isOnline: boolean;
+  deviceId: string;
+  lastPing?: number;
+  connectionId?: string;
+}
+
+/**
+ * Combined device status for both desktop and mobile
+ */
+export interface DevicesOnlineStatus {
+  desktop: DeviceOnlineStatus;
+  mobile: DeviceOnlineStatus;
+  lastChecked: number;
+  isReadyForTransfer: boolean; // true only if both are online
 }
 
 @Injectable({
@@ -33,6 +71,7 @@ export class TisRemoteUploadService implements OnDestroy {
 
   private destroy$ = new Subject<void>();
   private channelSubscription: Subscription | null = null;
+  private healthCheckSubscription: Subscription | null = null;
 
   private config: TisRemoteUploadConfig | null = null;
   private socketAdapter: TisSocketAdapter | null = null;
@@ -49,6 +88,17 @@ export class TisRemoteUploadService implements OnDestroy {
   private mobileConnection$ = new BehaviorSubject<MobileConnectionInfo | null>(null);
   private remoteUpload$ = new Subject<TisRemoteUploadEvent>();
   private error$ = new Subject<string>();
+  
+  // Pending files from mobile - waiting for user to accept/reject
+  private pendingFiles$ = new BehaviorSubject<TisRemoteUploadEvent[]>([]);
+  // Flag to track if we're waiting for mobile upload
+  private isWaitingForUpload$ = new BehaviorSubject<boolean>(false);
+  // Current field request info
+  private currentFieldRequest$ = new BehaviorSubject<FieldRequestInfo | null>(null);
+  
+  // Device online status - 'checking' means initial check in progress (blinking dot)
+  private devicesStatus$ = new BehaviorSubject<DevicesOnlineStatus | null>(null);
+  private isCheckingStatus$ = new BehaviorSubject<boolean>(false);
 
   constructor(private http: HttpClient) {
     // Restore mobile connection from storage on init
@@ -82,12 +132,22 @@ export class TisRemoteUploadService implements OnDestroy {
           if (connected) {
             // Always subscribe to our channel when connected
             this.subscribeToChannel(this.channelName);
+            
+            // If we have a restored connection, start health check
+            if (this.isConnectedToMobile()) {
+              this.startHealthCheck();
+            }
           }
         });
 
       // Subscribe to channel immediately if already connected
       if (this.socketAdapter.isConnected()) {
         this.subscribeToChannel(this.channelName);
+        
+        // If we have a restored connection, start health check
+        if (this.isConnectedToMobile()) {
+          this.startHealthCheck();
+        }
       }
 
       console.log(`[${TisRemoteUploadService.COMPONENT}] Configured:`, {
@@ -174,6 +234,97 @@ export class TisRemoteUploadService implements OnDestroy {
    */
   isPaired(): boolean {
     return this.isConnectedToMobile();
+  }
+
+  /**
+   * Get devices online status (both desktop and mobile)
+   */
+  getDevicesStatus(): Observable<DevicesOnlineStatus | null> {
+    return this.devicesStatus$.asObservable();
+  }
+
+  /**
+   * Get current devices status value
+   */
+  getDevicesStatusValue(): DevicesOnlineStatus | null {
+    return this.devicesStatus$.value;
+  }
+
+  /**
+   * Check if currently verifying connection status (for blinking indicator)
+   */
+  getIsCheckingStatus(): Observable<boolean> {
+    return this.isCheckingStatus$.asObservable();
+  }
+
+  /**
+   * Check if both devices are online and ready for transfer
+   */
+  isReadyForTransfer(): boolean {
+    return this.devicesStatus$.value?.isReadyForTransfer ?? false;
+  }
+
+  /**
+   * Get pending files from mobile (waiting to be accepted/rejected)
+   */
+  getPendingFiles(): Observable<TisRemoteUploadEvent[]> {
+    return this.pendingFiles$.asObservable();
+  }
+
+  /**
+   * Get current pending files value
+   */
+  getPendingFilesValue(): TisRemoteUploadEvent[] {
+    return this.pendingFiles$.value;
+  }
+
+  /**
+   * Check if waiting for mobile upload
+   */
+  getIsWaitingForUpload(): Observable<boolean> {
+    return this.isWaitingForUpload$.asObservable();
+  }
+
+  /**
+   * Get current field request info
+   */
+  getCurrentFieldRequest(): Observable<FieldRequestInfo | null> {
+    return this.currentFieldRequest$.asObservable();
+  }
+
+  /**
+   * Accept a pending file (emit to remoteUpload$ and call onFileAccept callback)
+   */
+  acceptPendingFile(file: TisRemoteUploadEvent): void {
+    // Remove from pending
+    const currentPending = this.pendingFiles$.value;
+    this.pendingFiles$.next(currentPending.filter(f => f !== file));
+
+    // Emit to remoteUpload$ so component can add it
+    this.remoteUpload$.next(file);
+
+    // Call onFileAccept callback if provided
+    if (this.config?.onFileAccept) {
+      this.config.onFileAccept(file.file);
+    }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] File accepted:`, file.file.fileName);
+  }
+
+  /**
+   * Reject/delete a pending file
+   */
+  rejectPendingFile(file: TisRemoteUploadEvent): void {
+    const currentPending = this.pendingFiles$.value;
+    this.pendingFiles$.next(currentPending.filter(f => f !== file));
+    console.log(`[${TisRemoteUploadService.COMPONENT}] File rejected:`, file.file.fileName);
+  }
+
+  /**
+   * Clear all pending files
+   */
+  clearPendingFiles(): void {
+    this.pendingFiles$.next([]);
   }
 
   // ===========================================================================
@@ -309,7 +460,16 @@ export class TisRemoteUploadService implements OnDestroy {
     }
 
     const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
+    const requestId = `field-${Date.now()}`;
     console.log(`[${TisRemoteUploadService.COMPONENT}] Sending field request to mobile:`, fieldInfo);
+
+    // Set waiting state and store field request info
+    this.isWaitingForUpload$.next(true);
+    this.currentFieldRequest$.next({
+      ...fieldInfo,
+      requestId,
+      requestedAt: Date.now()
+    });
 
     try {
       const response = await this.callApiWithTimeout('tis-image-mobile-uploader/field-request', {
@@ -317,11 +477,14 @@ export class TisRemoteUploadService implements OnDestroy {
         mobileDeviceId: mobileDeviceId,
         channel: this.channelName,
         field: fieldInfo,
-        requestId: `field-${Date.now()}`
+        requestId
       });
       console.log(`[${TisRemoteUploadService.COMPONENT}] Field request sent:`, response);
     } catch (error: any) {
       console.warn(`[${TisRemoteUploadService.COMPONENT}] Field request failed:`, error);
+      // Reset waiting state on error
+      this.isWaitingForUpload$.next(false);
+      this.currentFieldRequest$.next(null);
     }
   }
 
@@ -329,6 +492,10 @@ export class TisRemoteUploadService implements OnDestroy {
    * Cancel current field request
    */
   async cancelFieldRequest(): Promise<void> {
+    // Reset waiting state
+    this.isWaitingForUpload$.next(false);
+    this.currentFieldRequest$.next(null);
+
     if (!this.isConnectedToMobile()) {
       return;
     }
@@ -421,6 +588,9 @@ export class TisRemoteUploadService implements OnDestroy {
     this.connectionStatus$.next('disconnected');
     this.pairingSession$.next(null);
     this.clearMobileConnection();
+    
+    // Stop health check
+    this.stopHealthCheck();
   }
 
   /**
@@ -434,6 +604,126 @@ export class TisRemoteUploadService implements OnDestroy {
     this.connectionStatus$.next('disconnected');
     this.pairingSession$.next(null);
     this.clearMobileConnection();
+    
+    // Stop health check when disconnected
+    this.stopHealthCheck();
+  }
+
+  // ===========================================================================
+  // Device Health Check
+  // ===========================================================================
+
+  /**
+   * Start periodic health check for device online status
+   * Should be called when connection is established
+   */
+  startHealthCheck(): void {
+    // Stop any existing health check
+    this.stopHealthCheck();
+
+    const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
+    if (!mobileDeviceId || !this.deviceId) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot start health check - missing device IDs`);
+      return;
+    }
+
+    console.log(`[${TisRemoteUploadService.COMPONENT}] Starting health check (every ${HEALTH_CHECK_INTERVAL / 1000}s)`);
+
+    // Set initial checking state (blinking)
+    this.isCheckingStatus$.next(true);
+
+    // Run first check immediately
+    this.checkDevicesOnline();
+
+    // Then run periodically
+    this.healthCheckSubscription = interval(HEALTH_CHECK_INTERVAL)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.checkDevicesOnline();
+      });
+  }
+
+  /**
+   * Stop health check
+   */
+  stopHealthCheck(): void {
+    if (this.healthCheckSubscription) {
+      this.healthCheckSubscription.unsubscribe();
+      this.healthCheckSubscription = null;
+    }
+    this.devicesStatus$.next(null);
+    this.isCheckingStatus$.next(false);
+  }
+
+  /**
+   * Check if both devices are online via API
+   */
+  async checkDevicesOnline(): Promise<DevicesOnlineStatus | null> {
+    const mobileDeviceId = this.mobileConnection$.value?.mobileDeviceId;
+    
+    if (!mobileDeviceId || !this.deviceId) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Cannot check devices - missing device IDs`);
+      return null;
+    }
+
+    try {
+      const response = await this.callApiWithTimeout('socket/check-devices-online', {
+        desktopDeviceId: this.deviceId,
+        mobileDeviceId: mobileDeviceId
+      }, 15000);
+
+      const data = response.data || response;
+      
+      const status: DevicesOnlineStatus = {
+        desktop: {
+          isOnline: data.desktop?.isOnline ?? false,
+          deviceId: data.desktop?.deviceId || this.deviceId,
+          lastPing: data.desktop?.lastPing,
+          connectionId: data.desktop?.connectionId
+        },
+        mobile: {
+          isOnline: data.mobile?.isOnline ?? false,
+          deviceId: data.mobile?.deviceId || mobileDeviceId,
+          lastPing: data.mobile?.lastPing,
+          connectionId: data.mobile?.connectionId
+        },
+        lastChecked: Date.now(),
+        isReadyForTransfer: (data.desktop?.isOnline ?? false) && (data.mobile?.isOnline ?? false)
+      };
+
+      this.devicesStatus$.next(status);
+      this.isCheckingStatus$.next(false); // Stop blinking after first successful check
+
+      console.log(`[${TisRemoteUploadService.COMPONENT}] Devices status:`, {
+        desktop: status.desktop.isOnline ? '🟢' : '🔴',
+        mobile: status.mobile.isOnline ? '🟢' : '🔴',
+        readyForTransfer: status.isReadyForTransfer
+      });
+
+      return status;
+    } catch (error: any) {
+      console.warn(`[${TisRemoteUploadService.COMPONENT}] Health check failed:`, error.message);
+      
+      // On error, mark both as unknown/offline
+      const status: DevicesOnlineStatus = {
+        desktop: { isOnline: false, deviceId: this.deviceId },
+        mobile: { isOnline: false, deviceId: mobileDeviceId },
+        lastChecked: Date.now(),
+        isReadyForTransfer: false
+      };
+      this.devicesStatus$.next(status);
+      this.isCheckingStatus$.next(false);
+      
+      return status;
+    }
+  }
+
+  /**
+   * Force an immediate health check
+   */
+  async refreshDevicesStatus(): Promise<DevicesOnlineStatus | null> {
+    this.isCheckingStatus$.next(true);
+    return this.checkDevicesOnline();
   }
 
   // ===========================================================================
@@ -546,6 +836,9 @@ export class TisRemoteUploadService implements OnDestroy {
         this.pairingSession$.next(updatedSession);
       }
 
+      // Start health check to monitor device online status
+      this.startHealthCheck();
+
       console.log(`[${TisRemoteUploadService.COMPONENT}] Connection established with mobile device:`, mobileDeviceId);
     }
   }
@@ -567,30 +860,52 @@ export class TisRemoteUploadService implements OnDestroy {
 
   /**
    * Handle upload complete from mobile
+   * Files are added to pending queue for user to accept/reject
    */
   private handleUploadComplete(message: any): void {
     const data = message.data || message.payload || message;
-    const file = data.file || data;
+    
+    // Handle both single file and files array
+    const files = data.files || (data.file ? [data.file] : [data]);
 
-    if (file) {
-      const event: TisRemoteUploadEvent = {
-        file,
-        mobileDeviceId: data.mobileDeviceId || this.mobileConnection$.value?.mobileDeviceId || 'unknown',
-        timestamp: data.timestamp || Date.now(),
-        sessionId: data.sessionId
-      };
+    for (const file of files) {
+      if (file && (file.s3Url || file.s3Path || file.resourceUrl)) {
+        // Normalize the file object
+        const normalizedFile: TisRemoteUploadedFile = {
+          s3Url: file.s3Url || file.resourceUrl || file.uploadData?.resourceUrl || '',
+          fileName: file.fileName || file.filename || file.name || file.title || 'unknown',
+          mimeType: file.mimeType || file.type || 'application/octet-stream',
+          size: file.size || 0,
+          thumbnailUrl: file.thumbnailUrl,
+          metadata: file.metadata,
+          uploadData: file.uploadData
+        };
 
-      // Update last activity
-      const conn = this.mobileConnection$.value;
-      if (conn) {
-        const updated = { ...conn, lastActivity: Date.now() };
-        this.mobileConnection$.next(updated);
-        this.saveMobileConnection(updated);
+        const event: TisRemoteUploadEvent = {
+          file: normalizedFile,
+          mobileDeviceId: data.mobileDeviceId || this.mobileConnection$.value?.mobileDeviceId || 'unknown',
+          timestamp: data.timestamp || Date.now(),
+          sessionId: data.sessionId
+        };
+
+        // Add to pending files (user will accept/reject)
+        const currentPending = this.pendingFiles$.value;
+        this.pendingFiles$.next([...currentPending, event]);
+
+        console.log(`[${TisRemoteUploadService.COMPONENT}] File added to pending:`, normalizedFile.fileName);
       }
-
-      this.remoteUpload$.next(event);
-      console.log(`[${TisRemoteUploadService.COMPONENT}] Upload received:`, event);
     }
+
+    // Update last activity
+    const conn = this.mobileConnection$.value;
+    if (conn) {
+      const updated = { ...conn, lastActivity: Date.now() };
+      this.mobileConnection$.next(updated);
+      this.saveMobileConnection(updated);
+    }
+
+    // Reset waiting state - files received
+    this.isWaitingForUpload$.next(false);
   }
 
   /**
@@ -643,8 +958,11 @@ export class TisRemoteUploadService implements OnDestroy {
         // Only restore if connected within last 24 hours
         if (Date.now() - info.lastActivity < DEFAULT_PAIRING_TTL) {
           this.mobileConnection$.next(info);
-          // Note: actual connection status will be updated when mobile reconnects
+          // Also restore connection status so UI shows connected state
+          this.connectionStatus$.next('connected');
+          console.log(`[${TisRemoteUploadService.COMPONENT}] Restored mobile connection from localStorage:`, info.mobileDeviceId);
         } else {
+          console.log(`[${TisRemoteUploadService.COMPONENT}] Stored connection expired, clearing`);
           this.clearMobileConnection();
         }
       }
@@ -692,6 +1010,10 @@ export class TisRemoteUploadService implements OnDestroy {
 
     if (this.channelSubscription) {
       this.channelSubscription.unsubscribe();
+    }
+    
+    if (this.healthCheckSubscription) {
+      this.healthCheckSubscription.unsubscribe();
     }
   }
 }

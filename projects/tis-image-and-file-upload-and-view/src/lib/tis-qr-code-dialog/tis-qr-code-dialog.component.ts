@@ -2,7 +2,7 @@ import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Subject, Subscription, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { TisRemoteUploadService } from '../services/tis-remote-upload.service';
+import { TisRemoteUploadService, DevicesOnlineStatus } from '../services/tis-remote-upload.service';
 import { TisPairingSession, TisRemoteUploadEvent } from '../interfaces/socket-adapter.interface';
 
 export interface FieldInfo {
@@ -47,6 +47,10 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   // Device IDs
   desktopDeviceId: string = '';
   mobileDeviceId: string | null = null;
+
+  // Device online status
+  devicesStatus: DevicesOnlineStatus | null = null;
+  isCheckingStatus = false; // For blinking indicator
 
   private destroy$ = new Subject<void>();
   private countdownSubscription: Subscription | null = null;
@@ -124,6 +128,20 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(connection => {
         this.mobileDeviceId = connection?.mobileDeviceId || null;
+      });
+
+    // Device online status
+    this.remoteUploadService.getDevicesStatus()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(status => {
+        this.devicesStatus = status;
+      });
+
+    // Checking status (for blinking indicator)
+    this.remoteUploadService.getIsCheckingStatus()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(checking => {
+        this.isCheckingStatus = checking;
       });
 
     // Remote uploads
@@ -207,6 +225,43 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
     this.mobileDeviceId = null;
     this.isConnected = false;
     this.connectionStatus = 'disconnected';
+    this.devicesStatus = null;
+  }
+
+  /**
+   * Refresh device status
+   */
+  refreshStatus(): void {
+    this.remoteUploadService.refreshDevicesStatus();
+  }
+
+  /**
+   * Get desktop online status indicator class
+   * Returns: 'online' (green), 'offline' (red), 'checking' (blinking yellow)
+   */
+  getDesktopStatusClass(): string {
+    if (this.isCheckingStatus && !this.devicesStatus) {
+      return 'checking';
+    }
+    return this.devicesStatus?.desktop?.isOnline ? 'online' : 'offline';
+  }
+
+  /**
+   * Get mobile online status indicator class
+   * Returns: 'online' (green), 'offline' (red), 'checking' (blinking yellow)
+   */
+  getMobileStatusClass(): string {
+    if (this.isCheckingStatus && !this.devicesStatus) {
+      return 'checking';
+    }
+    return this.devicesStatus?.mobile?.isOnline ? 'online' : 'offline';
+  }
+
+  /**
+   * Check if ready for transfer (both devices online)
+   */
+  isReadyForTransfer(): boolean {
+    return this.devicesStatus?.isReadyForTransfer ?? false;
   }
 
   /**

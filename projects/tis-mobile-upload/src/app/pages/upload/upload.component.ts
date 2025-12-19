@@ -10,7 +10,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 import { NgxScannerQrcodeComponent, ScannerQRCodeResult } from 'ngx-scanner-qrcode';
 
-import { MobileSocketService, QrCodeParams, ConnectionStatus, DesktopMessage } from '../../services/mobile-socket.service';
+import { MobileSocketService, QrCodeParams, ConnectionStatus, DesktopMessage, DevicesOnlineStatus } from '../../services/mobile-socket.service';
 import { MobileUploadService } from '../../services/mobile-upload.service';
 
 @Component({
@@ -79,6 +79,13 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   readonly isScanning = signal(false);
   readonly scanError = signal<string | null>(null);
 
+  // Device online status
+  readonly devicesStatus = signal<DevicesOnlineStatus | null>(null);
+  readonly isCheckingStatus = signal(false);
+
+  // Check if previous session exists
+  readonly hasPreviousSession = computed(() => this.socketService.hasStoredSession());
+
   // File type config
   readonly acceptTypes = computed(() => {
     const fieldInfo = this.desktopFieldInfo();
@@ -112,6 +119,20 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.socketService.desktopMessages$
       .pipe(takeUntil(this.destroy$))
       .subscribe(message => this.handleDesktopMessage(message));
+
+    // Subscribe to devices online status
+    this.socketService.devicesStatus$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(status => {
+        this.devicesStatus.set(status);
+      });
+
+    // Subscribe to checking status (for blinking indicator)
+    this.socketService.isCheckingStatus$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(checking => {
+        this.isCheckingStatus.set(checking);
+      });
 
     // Initialize from URL params or stored session
     this.initializeFromUrl();
@@ -454,6 +475,40 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   isImageFile(mimeType: string): boolean {
     return mimeType.startsWith('image/');
+  }
+
+  /**
+   * Get mobile online status indicator class
+   */
+  getMobileStatusClass(): string {
+    if (this.isCheckingStatus() && !this.devicesStatus()) {
+      return 'checking';
+    }
+    return this.devicesStatus()?.mobile?.isOnline ? 'online' : 'offline';
+  }
+
+  /**
+   * Get desktop online status indicator class
+   */
+  getDesktopStatusClass(): string {
+    if (this.isCheckingStatus() && !this.devicesStatus()) {
+      return 'checking';
+    }
+    return this.devicesStatus()?.desktop?.isOnline ? 'online' : 'offline';
+  }
+
+  /**
+   * Check if ready for transfer (both devices online)
+   */
+  isReadyForTransfer(): boolean {
+    return this.devicesStatus()?.isReadyForTransfer ?? false;
+  }
+
+  /**
+   * Refresh device status
+   */
+  refreshStatus(): void {
+    this.socketService.refreshDevicesStatus();
   }
 
   // -------------------------------------------------------------------------

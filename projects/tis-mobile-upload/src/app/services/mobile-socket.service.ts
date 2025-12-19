@@ -91,6 +91,28 @@ interface ChannelSubscriptionInfo {
   isActive: boolean;
 }
 
+/**
+ * Device online status
+ */
+export interface DeviceOnlineStatus {
+  isOnline: boolean;
+  deviceId: string;
+  lastPing?: number;
+  connectionId?: string;
+}
+
+/**
+ * Combined device status for both desktop and mobile
+ */
+export interface DevicesOnlineStatus {
+  desktop: DeviceOnlineStatus;
+  mobile: DeviceOnlineStatus;
+  lastChecked: number;
+  isReadyForTransfer: boolean;
+}
+
+const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+
 // =============================================================================
 // Service
 // =============================================================================
@@ -141,6 +163,13 @@ export class MobileSocketService implements OnDestroy {
   // Heartbeat
   private heartbeatInterval: any = null;
   private lastPongReceived = 0;
+
+  // Health check
+  private healthCheckInterval: any = null;
+  private readonly _devicesStatus$ = new BehaviorSubject<DevicesOnlineStatus | null>(null);
+  private readonly _isCheckingStatus$ = new BehaviorSubject<boolean>(false);
+  readonly devicesStatus$ = this._devicesStatus$.asObservable();
+  readonly isCheckingStatus$ = this._isCheckingStatus$.asObservable();
 
   // Channel subscriptions
   private channels = new Map<string, ChannelStream>();
@@ -949,6 +978,132 @@ export class MobileSocketService implements OnDestroy {
     }
   }
 
+  // ===========================================================================
+  // Device Health Check
+  // ===========================================================================
+
+  /**
+   * Start periodic health check for device online status
+   */
+  startHealthCheck(): void {
+    this.stopHealthCheck();
+
+    if (!this.desktopDeviceId || !this.mobileDeviceId) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Cannot start health check - missing device IDs`);
+      return;
+    }
+
+    console.log(`[${MobileSocketService.COMPONENT}] Starting health check (every ${HEALTH_CHECK_INTERVAL / 1000}s)`);
+
+    // Set initial checking state (blinking)
+    this._isCheckingStatus$.next(true);
+
+    // Run first check immediately
+    this.checkDevicesOnline();
+
+    // Then run periodically
+    this.healthCheckInterval = setInterval(() => {
+      this.checkDevicesOnline();
+    }, HEALTH_CHECK_INTERVAL);
+  }
+
+  /**
+   * Stop health check
+   */
+  stopHealthCheck(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    this._devicesStatus$.next(null);
+    this._isCheckingStatus$.next(false);
+  }
+
+  /**
+   * Check if both devices are online via API
+   */
+  async checkDevicesOnline(): Promise<DevicesOnlineStatus | null> {
+    if (!this.desktopDeviceId || !this.mobileDeviceId) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Cannot check devices - missing device IDs`);
+      return null;
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.callApiViaSocket('socket/check-devices-online', {
+          desktopDeviceId: this.desktopDeviceId,
+          mobileDeviceId: this.mobileDeviceId
+        }).pipe(take(1), timeout(15000))
+      );
+
+      const data = response?.data || response;
+      
+      const status: DevicesOnlineStatus = {
+        desktop: {
+          isOnline: data?.desktop?.isOnline ?? false,
+          deviceId: data?.desktop?.deviceId || this.desktopDeviceId,
+          lastPing: data?.desktop?.lastPing,
+          connectionId: data?.desktop?.connectionId
+        },
+        mobile: {
+          isOnline: data?.mobile?.isOnline ?? false,
+          deviceId: data?.mobile?.deviceId || this.mobileDeviceId,
+          lastPing: data?.mobile?.lastPing,
+          connectionId: data?.mobile?.connectionId
+        },
+        lastChecked: Date.now(),
+        isReadyForTransfer: (data?.desktop?.isOnline ?? false) && (data?.mobile?.isOnline ?? false)
+      };
+
+      this._devicesStatus$.next(status);
+      this._isCheckingStatus$.next(false);
+
+      console.log(`[${MobileSocketService.COMPONENT}] Devices status:`, {
+        desktop: status.desktop.isOnline ? '🟢' : '🔴',
+        mobile: status.mobile.isOnline ? '🟢' : '🔴',
+        readyForTransfer: status.isReadyForTransfer
+      });
+
+      return status;
+    } catch (error: any) {
+      console.warn(`[${MobileSocketService.COMPONENT}] Health check failed:`, error?.message || error);
+      
+      // On error, mark both as unknown/offline
+      const status: DevicesOnlineStatus = {
+        desktop: { isOnline: false, deviceId: this.desktopDeviceId },
+        mobile: { isOnline: false, deviceId: this.mobileDeviceId },
+        lastChecked: Date.now(),
+        isReadyForTransfer: false
+      };
+      this._devicesStatus$.next(status);
+      this._isCheckingStatus$.next(false);
+      
+      return status;
+    }
+  }
+
+  /**
+   * Force an immediate health check
+   */
+  async refreshDevicesStatus(): Promise<DevicesOnlineStatus | null> {
+    this._isCheckingStatus$.next(true);
+    return this.checkDevicesOnline();
+  }
+
+  /**
+   * Get current devices status value
+   */
+  getDevicesStatusValue(): DevicesOnlineStatus | null {
+    return this._devicesStatus$.value;
+  }
+
+  /**
+   * Check if both devices are online and ready for transfer
+   */
+  isReadyForTransfer(): boolean {
+    return this._devicesStatus$.value?.isReadyForTransfer ?? false;
+  }
+
   private handleDisconnect(code: number): void {
     this._connectionStatus$.next('disconnected');
     this.stopHeartbeat();
@@ -999,12 +1154,16 @@ export class MobileSocketService implements OnDestroy {
     switch (state) {
       case 'CONNECTED':
         status = 'connected';
+        // Start health check when connected
+        this.startHealthCheck();
         break;
       case 'ERROR':
         status = 'error';
+        this.stopHealthCheck();
         break;
       case 'DISCONNECTED':
         status = 'disconnected';
+        this.stopHealthCheck();
         break;
       default:
         status = 'connecting';
@@ -1076,6 +1235,7 @@ export class MobileSocketService implements OnDestroy {
 
   private cleanup(): void {
     this.stopHeartbeat();
+    this.stopHealthCheck();
 
     if (this.reconnectTimeoutId) {
       clearTimeout(this.reconnectTimeoutId);

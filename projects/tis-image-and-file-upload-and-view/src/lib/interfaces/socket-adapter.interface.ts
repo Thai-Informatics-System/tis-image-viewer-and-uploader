@@ -118,6 +118,13 @@ export interface TisRemoteUploadConfig {
    * Pairing configuration
    */
   pairing?: TisPairingConfig;
+
+  /**
+   * Callback when user accepts a file from mobile upload
+   * This allows the host app to handle the accepted file (e.g., patch a form)
+   * @param file - The accepted file data
+   */
+  onFileAccept?: (file: TisRemoteUploadedFile) => void;
 }
 
 /**

@@ -580,3 +580,84 @@
     min-width: 100%;
   }
 }
+
+/* Device Status Dot */
+.device-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.device-status-dot.online {
+  background-color: #4caf50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+}
+
+.device-status-dot.offline {
+  background-color: #f44336;
+  box-shadow: 0 0 6px rgba(244, 67, 54, 0.5);
+}
+
+.device-status-dot.checking {
+  background-color: #ff9800;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Transfer Status */
+.transfer-status {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.transfer-status.ready {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.transfer-status.ready mat-icon {
+  color: #4caf50;
+}
+
+.transfer-status.not-ready {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.transfer-status.not-ready mat-icon {
+  color: #ff9800;
+}
+
+.refresh-status-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+}
+
+.refresh-status-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.refresh-status-btn mat-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

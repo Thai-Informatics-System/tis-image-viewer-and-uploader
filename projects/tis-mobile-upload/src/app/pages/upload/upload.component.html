@@ -34,10 +34,12 @@
             <mat-icon>qr_code_scanner</mat-icon>
             Scan QR Code
           </button>
-          <button mat-stroked-button color="primary" (click)="retryConnection()">
-            <mat-icon>refresh</mat-icon>
-            Retry Last Connection
-          </button>
+          @if (hasPreviousSession()) {
+            <button mat-stroked-button color="primary" (click)="retryConnection()">
+              <mat-icon>refresh</mat-icon>
+              Retry Last Connection
+            </button>
+          }
         </div>
 
         <p class="helper-text">
@@ -103,9 +105,10 @@
       @if (isConnected()) {
         <div class="device-info-card">
           <div class="device-row">
+            <div class="device-status-dot" [ngClass]="getMobileStatusClass()"></div>
             <mat-icon class="device-icon mobile">smartphone</mat-icon>
             <div class="device-details">
-              <span class="device-label">This Device</span>
+              <span class="device-label">THIS DEVICE</span>
               <span class="device-id">{{ formatDeviceId(mobileDeviceId()) }}</span>
             </div>
           </div>
@@ -113,13 +116,33 @@
             <mat-icon>sync_alt</mat-icon>
           </div>
           <div class="device-row">
+            <div class="device-status-dot" [ngClass]="getDesktopStatusClass()"></div>
             <mat-icon class="device-icon desktop">computer</mat-icon>
             <div class="device-details">
-              <span class="device-label">Connected to Desktop</span>
+              <span class="device-label">CONNECTED TO DESKTOP</span>
               <span class="device-id">{{ formatDeviceId(desktopDeviceId()) }}</span>
             </div>
           </div>
         </div>
+
+        <!-- Transfer Status -->
+        @if (devicesStatus()) {
+          <div class="transfer-status" [class.ready]="isReadyForTransfer()" [class.not-ready]="!isReadyForTransfer()">
+            <mat-icon>{{ isReadyForTransfer() ? 'check_circle' : 'warning' }}</mat-icon>
+            <span>
+              @if (isReadyForTransfer()) {
+                Ready for transfer
+              } @else if (!devicesStatus()?.desktop?.isOnline) {
+                Desktop is offline
+              } @else {
+                This device is offline
+              }
+            </span>
+            <button mat-icon-button class="refresh-status-btn" (click)="refreshStatus()" [disabled]="isCheckingStatus()">
+              <mat-icon [class.spinning]="isCheckingStatus()">refresh</mat-icon>
+            </button>
+          </div>
+        }
 
         <!-- Field Label from Desktop (if selected) -->
         @if (desktopFieldInfo()?.label) {

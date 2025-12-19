@@ -97,20 +97,55 @@
                                                 <mat-icon>close</mat-icon>
                                             </button>
                                         </div>
+                                    } @else if(pendingFiles.length > 0) {
+                                        <!-- Pending files from mobile - show accept/reject UI -->
+                                        <div class="pending-files-container" (click)="$event.stopPropagation()">
+                                            <div class="pending-files-header">
+                                                <mat-icon>smartphone</mat-icon>
+                                                <span>{{ pendingFiles.length }} file(s) from mobile</span>
+                                            </div>
+                                            <div class="pending-files-list">
+                                                @for(pf of pendingFiles; track pf.timestamp; let idx = $index) {
+                                                    <div class="pending-file-item">
+                                                        <div class="pending-file-preview" [style.background-image]="isImageMimeType(pf.file.mimeType) ? 'url(' + pf.file.s3Url + ')' : ''">
+                                                            @if(!isImageMimeType(pf.file.mimeType)) {
+                                                                <mat-icon>description</mat-icon>
+                                                            }
+                                                        </div>
+                                                        <span class="pending-file-name" [title]="pf.file.fileName">{{ pf.file.fileName }}</span>
+                                                        <div class="pending-file-actions">
+                                                            <button type="button" mat-icon-button class="accept-btn" (click)="acceptPendingFile(pf); $event.stopPropagation()" title="Accept">
+                                                                <mat-icon>check</mat-icon>
+                                                            </button>
+                                                            <button type="button" mat-icon-button class="reject-btn" (click)="rejectPendingFile(pf); $event.stopPropagation()" title="Reject">
+                                                                <mat-icon>close</mat-icon>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
                                     } @else {
                                         <mat-icon class="active">upload_file</mat-icon>
-                                        <!-- Mobile Upload Button -->
-                                        @if(isRemoteUploadAvailable()){
+                                        <!-- Mobile Upload Buttons - Show when remote upload is available and connected -->
+                                        @if(isRemoteUploadAvailable() && isRemotePaired()){
                                             <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
+                                                <button type="button" class="mobile-upload-btn connected" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Upload from Mobile">
                                                     <mat-icon>smartphone</mat-icon>
-                                                    <span>{{ isRemotePaired() ? 'Upload from Mobile' : 'Connect Mobile' }}</span>
+                                                    <span>Upload from Mobile</span>
                                                 </button>
-                                                @if(isRemotePaired()) {
-                                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote(); $event.stopPropagation(); $event.preventDefault()" title="Disconnect Mobile">
-                                                        <mat-icon>link_off</mat-icon>
-                                                    </button>
-                                                }
+                                                <button type="button" class="view-connection-btn" (click)="openViewConnectionDialog(); $event.stopPropagation(); $event.preventDefault()" title="View Connection">
+                                                    <mat-icon>link</mat-icon>
+                                                </button>
+                                            </div>
+                                        }
+                                        <!-- Show Connect button only when NOT connected -->
+                                        @else if(isRemoteUploadAvailable() && !isRemotePaired()){
+                                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
+                                                <button type="button" class="mobile-upload-btn" (click)="openRemoteUploadDialog(); $event.stopPropagation(); $event.preventDefault()" title="Connect Mobile Device">
+                                                    <mat-icon>qr_code_scanner</mat-icon>
+                                                    <span>Connect Mobile</span>
+                                                </button>
                                             </div>
                                         }
                                     }
@@ -141,18 +176,25 @@
                                 <small>{{hint}}</small>
                             }
                         </p>
-                        <!-- Mobile Upload Button -->
-                        @if(isRemoteUploadAvailable()){
+                        <!-- Mobile Upload Buttons - Show when remote upload is available and connected -->
+                        @if(isRemoteUploadAvailable() && isRemotePaired()){
                             <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                <button type="button" class="mobile-upload-btn" [class.connected]="isRemotePaired()" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" [title]="isRemotePaired() ? 'Upload from Mobile' : 'Connect & Upload Via Mobile'">
+                                <button type="button" class="mobile-upload-btn connected" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Upload from Mobile">
                                     <mat-icon>smartphone</mat-icon>
-                                    <span>{{ isRemotePaired() ? 'Upload from Mobile' : 'Connect Mobile' }}</span>
+                                    <span>Upload from Mobile</span>
                                 </button>
-                                @if(isRemotePaired()) {
-                                    <button type="button" class="disconnect-btn" (click)="disconnectRemote(); $event.stopPropagation(); $event.preventDefault()" title="Disconnect Mobile">
-                                        <mat-icon>link_off</mat-icon>
-                                    </button>
-                                }
+                                <button type="button" class="view-connection-btn" (click)="openViewConnectionDialog(); $event.stopPropagation(); $event.preventDefault()" title="View Connection">
+                                    <mat-icon>link</mat-icon>
+                                </button>
+                            </div>
+                        }
+                        <!-- Show Connect button only when NOT connected -->
+                        @else if(isRemoteUploadAvailable() && !isRemotePaired()){
+                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
+                                <button type="button" class="mobile-upload-btn" (click)="openRemoteUploadDialog(); $event.stopPropagation(); $event.preventDefault()" title="Connect Mobile Device">
+                                    <mat-icon>qr_code_scanner</mat-icon>
+                                    <span>Connect Mobile</span>
+                                </button>
                             </div>
                         }
                     }
