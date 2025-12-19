@@ -86,6 +86,9 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   // Check if previous session exists
   readonly hasPreviousSession = computed(() => this.socketService.hasStoredSession());
 
+  // Track if disconnect was intentional (user-initiated)
+  readonly isIntentionalDisconnect = signal(false);
+
   // File type config
   readonly acceptTypes = computed(() => {
     const fieldInfo = this.desktopFieldInfo();
@@ -250,6 +253,15 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     console.log('[UploadComponent] Desktop message:', message);
 
     switch (message.type) {
+      case 'mobile-link-established':
+        // Mobile link established - connection is ready
+        this.connectionStatus.set('connected');
+        this.isInitializing.set(false);
+        this.initError.set(null); // Clear any error state
+        this.isIntentionalDisconnect.set(false); // Reset disconnect flag
+        this.snackBar.open('Connected to desktop!', '', { duration: 2000 });
+        break;
+
       case 'connectionState':
         if (message.state === 'DISCONNECTED' || message.connectionState === 'DISCONNECTED') {
           this.snackBar.open('Disconnected by desktop', '', { duration: 3000 });
@@ -444,14 +456,35 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   disconnect(): void {
+    // Mark as intentional disconnect
+    this.isIntentionalDisconnect.set(true);
+    
+    // Disconnect from socket service
     this.socketService.disconnect();
+    
+    // Clear upload service
     this.uploadService.clearUploads();
+    
+    // Reset all connection state
     this.connectionStatus.set('disconnected');
     this.mobileDeviceId.set('');
     this.desktopDeviceId.set('');
     this.apiUrl.set('');
     this.desktopFieldInfo.set(null);
     this.uploadedFiles.set([]);
+    
+    // Reset device status
+    this.devicesStatus.set(null);
+    this.isCheckingStatus.set(false);
+    
+    // Reset initialization state to show error screen
+    this.isInitializing.set(false);
+    this.initError.set('Disconnected. Please scan the QR code from the desktop app to reconnect.');
+    
+    // Show disconnect notification
+    this.snackBar.open('Disconnected from desktop', '', { duration: 3000 });
+    
+    console.log('[UploadComponent] Disconnected and reset all state');
   }
 
   // -------------------------------------------------------------------------
@@ -518,6 +551,8 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   startScanning(): void {
     this.scanError.set(null);
     this.isScanning.set(true);
+    // Reset intentional disconnect flag when user initiates new connection
+    this.isIntentionalDisconnect.set(false);
     // Set pending flag - scanner will be started in ngAfterViewChecked
     // because the scanner component needs to be rendered first
     this.scannerStartPending = true;
@@ -617,24 +652,42 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
            typeof params.apiUrl === 'string';
   }
 
-  private connectWithParams(params: QrCodeParams): void {
+  private async connectWithParams(params: QrCodeParams): Promise<void> {
     console.log('[QR Scanner] Connecting with params:', { 
       deviceId: params.deviceId, 
       userId: params.userId,
       apiUrl: params.apiUrl 
     });
     
+    // Close scanner
+    this.stopScanning();
+    
+    // Show connecting state
+    this.isInitializing.set(true);
+    this.initError.set(null);
     this.snackBar.open('QR code scanned successfully! Connecting...', 'OK', { duration: 2000 });
     
-    // Store API URL
-    this.apiUrl.set(params.apiUrl);
-    this.desktopDeviceId.set(params.deviceId);
-    
-    // Connect via socket service - use the initialize method
-    this.socketService.initialize(params).catch((error) => {
+    try {
+      // Store device IDs and API URL
+      this.apiUrl.set(params.apiUrl);
+      this.desktopDeviceId.set(params.deviceId);
+      
+      // Initialize connection via socket service
+      await this.socketService.initialize(params);
+      
+      // Get mobile device ID after initialization
+      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
+      
+      // Connection state will be updated by mobile-link-established message
+      // Just clear initializing flag here
+      this.isInitializing.set(false);
+      
+    } catch (error: any) {
       console.error('[QR Scanner] Connection failed:', error);
+      this.isInitializing.set(false);
+      this.initError.set(error.message || 'Connection failed. Please try again.');
       this.snackBar.open('Connection failed. Please try again.', 'OK', { duration: 3000 });
-    });
+    }
   }
 }
 

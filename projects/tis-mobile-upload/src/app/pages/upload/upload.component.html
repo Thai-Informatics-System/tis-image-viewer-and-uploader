@@ -26,7 +26,7 @@
         <div class="error-icon">
           <mat-icon>error_outline</mat-icon>
         </div>
-        <h2>Connection Failed</h2>
+        <h2>{{ isIntentionalDisconnect() ? 'Disconnected' : 'Connection Failed' }}</h2>
         <p>{{ initError() }}</p>
         
         <div class="action-buttons">
@@ -34,7 +34,7 @@
             <mat-icon>qr_code_scanner</mat-icon>
             Scan QR Code
           </button>
-          @if (hasPreviousSession()) {
+          @if (hasPreviousSession() && !isIntentionalDisconnect()) {
             <button mat-stroked-button color="primary" (click)="retryConnection()">
               <mat-icon>refresh</mat-icon>
               Retry Last Connection

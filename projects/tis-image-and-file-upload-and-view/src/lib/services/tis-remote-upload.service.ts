@@ -667,12 +667,13 @@ export class TisRemoteUploadService implements OnDestroy {
     }
 
     try {
-      const response = await this.callApiWithTimeout('socket/check-devices-online', {
+      const response = await this.callApiWithTimeout('tis-image-mobile-uploader/check-devices-online', {
         desktopDeviceId: this.deviceId,
         mobileDeviceId: mobileDeviceId
       }, 15000);
 
-      const data = response.data || response;
+      // Response structure: { body: { data: { desktop: {...}, mobile: {...} } } }
+      const data = response?.body?.data || response?.data || response;
       
       const status: DevicesOnlineStatus = {
         desktop: {
@@ -699,6 +700,20 @@ export class TisRemoteUploadService implements OnDestroy {
         mobile: status.mobile.isOnline ? '🟢' : '🔴',
         readyForTransfer: status.isReadyForTransfer
       });
+
+      // If desktop device (this device) is offline, send immediate ping to update status
+      if (!status.desktop.isOnline && this.socketAdapter) {
+        console.log(`[${TisRemoteUploadService.COMPONENT}] Desktop detected as offline, sending immediate ping...`);
+        this.callApiWithTimeout('ping', { timestamp: Date.now() }, 5000)
+          .then(() => {
+            console.log(`[${TisRemoteUploadService.COMPONENT}] Immediate ping sent, rechecking status...`);
+            // Recheck status after a short delay
+            setTimeout(() => this.checkDevicesOnline(), 1000);
+          })
+          .catch((err) => {
+            console.warn(`[${TisRemoteUploadService.COMPONENT}] Immediate ping failed:`, err);
+          });
+      }
 
       return status;
     } catch (error: any) {

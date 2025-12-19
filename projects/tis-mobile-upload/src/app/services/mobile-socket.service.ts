@@ -1030,13 +1030,14 @@ export class MobileSocketService implements OnDestroy {
 
     try {
       const response = await firstValueFrom(
-        this.callApiViaSocket('socket/check-devices-online', {
+        this.callApiViaSocket('tis-image-mobile-uploader/check-devices-online', {
           desktopDeviceId: this.desktopDeviceId,
           mobileDeviceId: this.mobileDeviceId
         }).pipe(take(1), timeout(15000))
       );
 
-      const data = response?.data || response;
+      // Response structure: { body: { data: { desktop: {...}, mobile: {...} } } }
+      const data = response?.body?.data || response?.data || response;
       
       const status: DevicesOnlineStatus = {
         desktop: {
@@ -1063,6 +1064,21 @@ export class MobileSocketService implements OnDestroy {
         mobile: status.mobile.isOnline ? '🟢' : '🔴',
         readyForTransfer: status.isReadyForTransfer
       });
+
+      // If mobile device (this device) is offline, send immediate ping to update status
+      if (!status.mobile.isOnline && this.socket?.readyState === WebSocket.OPEN) {
+        console.log(`[${MobileSocketService.COMPONENT}] Mobile detected as offline, sending immediate ping...`);
+        this.callApiViaSocket('ping', { timestamp: Date.now() }).pipe(take(1)).subscribe({
+          next: () => {
+            console.log(`[${MobileSocketService.COMPONENT}] Immediate ping sent, rechecking status...`);
+            // Recheck status after a short delay
+            setTimeout(() => this.checkDevicesOnline(), 1000);
+          },
+          error: (err: any) => {
+            console.warn(`[${MobileSocketService.COMPONENT}] Immediate ping failed:`, err);
+          }
+        });
+      }
 
       return status;
     } catch (error: any) {
