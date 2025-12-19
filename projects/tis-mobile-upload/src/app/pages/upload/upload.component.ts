@@ -89,6 +89,9 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   // Track if disconnect was intentional (user-initiated)
   readonly isIntentionalDisconnect = signal(false);
 
+  // Track if disconnecting is in progress
+  private isDisconnecting = false;
+
   // File type config
   readonly acceptTypes = computed(() => {
     const fieldInfo = this.desktopFieldInfo();
@@ -115,7 +118,10 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.socketService.connectionStatus$
       .pipe(takeUntil(this.destroy$))
       .subscribe(status => {
-        this.connectionStatus.set(status);
+        // Ignore status updates if we're in the middle of disconnecting
+        if (!this.isDisconnecting) {
+          this.connectionStatus.set(status);
+        }
       });
 
     // Subscribe to desktop messages
@@ -455,36 +461,44 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
-  disconnect(): void {
+  async disconnect(): Promise<void> {
+    // Set disconnecting flag to prevent race conditions
+    this.isDisconnecting = true;
+    
     // Mark as intentional disconnect
     this.isIntentionalDisconnect.set(true);
     
-    // Disconnect from socket service
-    this.socketService.disconnect();
-    
-    // Clear upload service
-    this.uploadService.clearUploads();
-    
-    // Reset all connection state
+    // Immediately update UI state before async operations
     this.connectionStatus.set('disconnected');
     this.mobileDeviceId.set('');
     this.desktopDeviceId.set('');
     this.apiUrl.set('');
     this.desktopFieldInfo.set(null);
     this.uploadedFiles.set([]);
-    
-    // Reset device status
     this.devicesStatus.set(null);
     this.isCheckingStatus.set(false);
-    
-    // Reset initialization state to show error screen
     this.isInitializing.set(false);
     this.initError.set('Disconnected. Please scan the QR code from the desktop app to reconnect.');
+    
+    // Now perform async disconnect operations
+    try {
+      await this.socketService.disconnect();
+    } catch (error) {
+      console.error('[UploadComponent] Disconnect error:', error);
+    }
+    
+    // Clear upload service
+    this.uploadService.clearUploads();
     
     // Show disconnect notification
     this.snackBar.open('Disconnected from desktop', '', { duration: 3000 });
     
     console.log('[UploadComponent] Disconnected and reset all state');
+    
+    // Reset disconnecting flag after a short delay
+    setTimeout(() => {
+      this.isDisconnecting = false;
+    }, 500);
   }
 
   // -------------------------------------------------------------------------

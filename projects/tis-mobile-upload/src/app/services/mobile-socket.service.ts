@@ -803,15 +803,8 @@ export class MobileSocketService implements OnDestroy {
       info.closeAfterFirstResponse = closeChannelAfterFirstResponse;
     }
 
-    // Send subscription to server for new channels (not prefix channels)
-    // Check if socket is open instead of connection state, because we need to subscribe
-    // during establishMobileUploadLink() before connection state is 'CONNECTED'
-    const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
-    if (isSocketOpen && isNew && !channelName.startsWith('_prefix_')) {
-      this.sendChannelSubscription(channelName);
-    } else if (!isSocketOpen && isNew) {
-      console.warn(`[${MobileSocketService.COMPONENT}] Socket not open, cannot send subscription for: ${channelName}`);
-    }
+    // Note: Backend subscription calls removed as they're not being used on server side
+    // Client-side channel management still works for routing messages
 
     let channel = this.channels.get(channelName);
     if (!channel) {
@@ -883,10 +876,11 @@ export class MobileSocketService implements OnDestroy {
 
   /**
    * Send channel subscription to server
+   * NOTE: Disabled - backend team confirmed this is not being used
    */
   private sendChannelSubscription(channelName: string): void {
-    const socketBodyPayload = { route: 'tis-image-mobile-uploader/subscribe', body: { channel: channelName } };
-    this.sendRawMessage({ action: 'api', data: socketBodyPayload });
+    // const socketBodyPayload = { route: 'tis-image-mobile-uploader/subscribe', body: { channel: channelName } };
+    // this.sendRawMessage({ action: 'api', data: socketBodyPayload });
   }
 
   // ===========================================================================
