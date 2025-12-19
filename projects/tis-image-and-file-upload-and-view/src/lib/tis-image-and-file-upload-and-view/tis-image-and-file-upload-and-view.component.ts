@@ -8,6 +8,7 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { TisHelperService } from '../services/tis-helper.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
 import { TisQrCodeDialogComponent, TisQrCodeDialogData } from '../tis-qr-code-dialog/tis-qr-code-dialog.component';
+import { TisViewConnectionDialogComponent } from '../tis-view-connection-dialog/tis-view-connection-dialog.component';
 import { TisRemoteUploadService } from '../services/tis-remote-upload.service';
 import { Config } from '../interfaces/config.type';
 import { CdkDragDrop, CdkDragMove, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -1955,7 +1956,6 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
       subtitle: `Scan this QR code to upload ${this.type === 'image' ? 'images' : 'files'} from your mobile device`,
       qrSize: 200,
       showCountdown: true,
-      autoCloseOnUpload: false,
       fieldInfo: {
         label: this.label || `${this.type === 'image' ? 'Images' : 'Files'}`,
         accept: this.accept || (this.type === 'image' ? 'image/*' : '*'),
@@ -2059,21 +2059,18 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
    * Open dialog showing connection status with disconnect option
    */
   openViewConnectionDialog(): void {
-    // TODO: Create a TisViewConnectionDialogComponent
-    // For now, use confirmation dialog to offer disconnect
-    const dialogRef = this.dialog.open(TisConfirmationDialogComponent, {
-      width: '400px',
+    const dialogRef = this.dialog.open(TisViewConnectionDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
       data: {
-        title: 'Mobile Connection',
-        message: 'You are connected to a mobile device. Would you like to disconnect?',
-        confirmText: 'Disconnect',
-        cancelText: 'Close'
-      }
+        title: 'Mobile Connection'
+      },
+      disableClose: false
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.disconnectRemote();
+      if (result === 'disconnected') {
+        console.log('[TisImageAndFileUploadAndView] Mobile device disconnected');
       }
     });
   }

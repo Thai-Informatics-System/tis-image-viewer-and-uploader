@@ -21,7 +21,6 @@ export interface TisQrCodeDialogData {
   subtitle?: string;
   qrSize?: number;
   showCountdown?: boolean;
-  autoCloseOnUpload?: boolean;
   fieldInfo?: FieldInfo;
 }
 
@@ -42,7 +41,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
   errorMessage: string | null = null;
 
   connectionStatus: 'disconnected' | 'pending' | 'connected' = 'disconnected';
-  uploadedFiles: TisRemoteUploadEvent[] = [];
 
   // Device IDs
   desktopDeviceId: string = '';
@@ -144,17 +142,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
         this.isCheckingStatus = checking;
       });
 
-    // Remote uploads
-    this.remoteUploadService.getRemoteUploads()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(event => {
-        this.uploadedFiles.push(event);
-        
-        if (this.data.autoCloseOnUpload) {
-          this.dialogRef.close({ uploaded: true, files: this.uploadedFiles });
-        }
-      });
-
     // Errors
     this.remoteUploadService.getErrors()
       .pipe(takeUntil(this.destroy$))
@@ -206,7 +193,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
    */
   refreshQrCode(): void {
     this.isExpired = false;
-    this.uploadedFiles = [];
     this.generateQrCode();
   }
 
@@ -268,9 +254,6 @@ export class TisQrCodeDialogComponent implements OnInit, OnDestroy {
    * Close dialog
    */
   close(): void {
-    this.dialogRef.close({ 
-      uploaded: this.uploadedFiles.length > 0, 
-      files: this.uploadedFiles 
-    });
+    this.dialogRef.close();
   }
 }

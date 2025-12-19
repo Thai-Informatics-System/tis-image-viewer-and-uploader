@@ -1,0 +1,127 @@
+<div class="dialog-container">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>{{ data.title || 'Mobile Connection' }}</h2>
+    <button mat-icon-button class="close-btn" (click)="close()" tabindex="-1">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    @if (mobileConnection) {
+      <!-- Connection Info Card -->
+      <div class="connection-card">
+        <div class="connection-header">
+          <div class="status-indicator" [class.online]="devicesStatus?.isReadyForTransfer" [class.blinking]="isCheckingStatus">
+            <mat-icon>{{ devicesStatus?.isReadyForTransfer ? 'check_circle' : 'error' }}</mat-icon>
+            <span class="status-text">
+              {{ devicesStatus?.isReadyForTransfer ? 'Connected' : 'Connection Issue' }}
+            </span>
+          </div>
+          <button 
+            mat-button 
+            color="primary" 
+            class="refresh-btn"
+            (click)="refreshStatus()"
+            [disabled]="isCheckingStatus">
+            <mat-icon [class.spinning]="isCheckingStatus">refresh</mat-icon>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <div class="connection-details">
+          <div class="detail-row">
+            <span class="detail-label">Mobile Device ID:</span>
+            <span class="detail-value">{{ mobileConnection.mobileDeviceId }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Connected For:</span>
+            <span class="detail-value">{{ getConnectionDuration() }}</span>
+          </div>
+          @if (mobileConnection.connectedAt) {
+            <div class="detail-row">
+              <span class="detail-label">Connected At:</span>
+              <span class="detail-value">{{ mobileConnection.connectedAt | date:'short' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Devices Status Card -->
+      @if (devicesStatus) {
+        <div class="devices-status-card">
+          <h3 class="card-title">Device Status</h3>
+          
+          <div class="device-status-row">
+            <div class="device-info">
+              <mat-icon class="device-icon">computer</mat-icon>
+              <div class="device-details">
+                <div class="device-name">Desktop</div>
+                <div class="device-id">{{ devicesStatus.desktop.deviceId }}</div>
+              </div>
+            </div>
+            <div class="status-badge" [class.online]="devicesStatus.desktop.isOnline">
+              <mat-icon>{{ devicesStatus.desktop.isOnline ? 'circle' : 'cancel' }}</mat-icon>
+              <span>{{ devicesStatus.desktop.isOnline ? 'Online' : 'Offline' }}</span>
+            </div>
+            @if (devicesStatus.desktop.lastPing) {
+              <div class="last-ping">Last ping: {{ getLastPing(devicesStatus.desktop.lastPing) }}</div>
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="device-status-row">
+            <div class="device-info">
+              <mat-icon class="device-icon">smartphone</mat-icon>
+              <div class="device-details">
+                <div class="device-name">Mobile</div>
+                <div class="device-id">{{ devicesStatus.mobile.deviceId }}</div>
+              </div>
+            </div>
+            <div class="status-badge" [class.online]="devicesStatus.mobile.isOnline">
+              <mat-icon>{{ devicesStatus.mobile.isOnline ? 'circle' : 'cancel' }}</mat-icon>
+              <span>{{ devicesStatus.mobile.isOnline ? 'Online' : 'Offline' }}</span>
+            </div>
+            @if (devicesStatus.mobile.lastPing) {
+              <div class="last-ping">Last ping: {{ getLastPing(devicesStatus.mobile.lastPing) }}</div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Warning Message -->
+      @if (devicesStatus && !devicesStatus.isReadyForTransfer) {
+        <div class="warning-message">
+          <mat-icon>warning</mat-icon>
+          <span>File uploads may not work properly when devices are offline.</span>
+        </div>
+      }
+    } @else {
+      <!-- No Connection -->
+      <div class="no-connection">
+        <mat-icon>link_off</mat-icon>
+        <p>No mobile device connected</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button 
+      mat-button 
+      (click)="close()"
+      [disabled]="disconnecting">
+      Close
+    </button>
+    @if (mobileConnection) {
+      <button 
+        mat-raised-button 
+        color="warn" 
+        (click)="disconnect()"
+        [disabled]="disconnecting">
+        <mat-icon *ngIf="!disconnecting">link_off</mat-icon>
+        <mat-spinner *ngIf="disconnecting" diameter="18"></mat-spinner>
+        <span>{{ disconnecting ? 'Disconnecting...' : 'Disconnect' }}</span>
+      </button>
+    }
+  </mat-dialog-actions>
+</div>

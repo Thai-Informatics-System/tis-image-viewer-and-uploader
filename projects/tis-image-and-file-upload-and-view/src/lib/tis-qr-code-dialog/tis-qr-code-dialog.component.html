@@ -72,20 +72,9 @@
           <span>Mobile Connected!</span>
         </div>
         <p class="connected-message">
-          You can now upload images from your mobile. Close this popup and click on the 
-          <strong>"Upload from Mobile"</strong> button to continue.
+          Your mobile device is now paired with this desktop. Click <strong>"Done"</strong> below to close this dialog, 
+          then click <strong>"Upload from Mobile"</strong> whenever you want to upload files.
         </p>
-        
-        <!-- Uploaded Files -->
-        <div class="uploaded-files" *ngIf="uploadedFiles.length > 0">
-          <h4>Uploaded Files ({{ uploadedFiles.length }})</h4>
-          <div class="file-list">
-            <div class="file-item" *ngFor="let upload of uploadedFiles">
-              <mat-icon>check_circle</mat-icon>
-              <span>{{ upload.file.fileName }}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- QR Code (only show when not connected) -->
@@ -135,7 +124,7 @@
       Regenerate QR Code
     </button>
     <button mat-raised-button color="primary" (click)="close()">
-      {{ isConnected ? 'Close' : (uploadedFiles.length > 0 ? 'Done' : 'Close') }}
+      {{ isConnected ? 'Done' : 'Close' }}
     </button>
   </div>
 </div>
