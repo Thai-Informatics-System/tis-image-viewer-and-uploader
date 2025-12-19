@@ -59,12 +59,15 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   // API URL from QR params
   readonly apiUrl = signal<string>('');
   
+  // Upload URLs fetched from backend
+  readonly uploadUrls = signal<UploadUrls | null>(null);
+  
   // Desktop info received via socket (field configuration)
   readonly desktopFieldInfo = signal<DesktopFieldInfo | null>(null);
   
   // Computed states
   readonly isConnected = computed(() => this.connectionStatus() === 'connected');
-  readonly isReady = computed(() => this.isConnected() && !this.isInitializing() && !!this.apiUrl());
+  readonly isReady = computed(() => this.isConnected() && !this.isInitializing() && !!this.apiUrl() && !!this.uploadUrls());
 
   // Upload tracking
   readonly totalUploaded = this.uploadService.totalUploaded;
@@ -266,6 +269,8 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.initError.set(null); // Clear any error state
         this.isIntentionalDisconnect.set(false); // Reset disconnect flag
         this.snackBar.open('Connected to desktop!', '', { duration: 2000 });
+        // Fetch upload URLs from backend
+        this.fetchUploadUrls();
         break;
 
       case 'connectionState':
@@ -329,6 +334,44 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   // -------------------------------------------------------------------------
+  // Upload URLs
+  // -------------------------------------------------------------------------
+
+  /**
+   * Fetch upload URLs from backend via socket API
+   * Called after mobile-link-established
+   */
+  private async fetchUploadUrls(): Promise<void> {
+    try {
+      console.log('[UploadComponent] Fetching upload URLs from backend...');
+      
+      const response = await this.socketService.callApiViaSocketPromise('tis-image-mobile-uploader/get-upload-urls', {
+        mobileDeviceId: this.mobileDeviceId(),
+        desktopDeviceId: this.desktopDeviceId()
+      });
+
+      console.log('[UploadComponent] Upload URLs response:', response);
+
+      // Response structure: { success: true, data: { filePresignedUrlGenerator: '/file/get-upload-url', imagePresignedUrlGenerator: '/image/get-upload-url' } }
+      const data = response?.body?.data || response?.data || response;
+      
+      if (data?.filePresignedUrlGenerator && data?.imagePresignedUrlGenerator) {
+        this.uploadUrls.set({
+          filePresignedUrlGenerator: data.filePresignedUrlGenerator,
+          imagePresignedUrlGenerator: data.imagePresignedUrlGenerator
+        });
+        console.log('[UploadComponent] Upload URLs configured:', this.uploadUrls());
+      } else {
+        console.warn('[UploadComponent] Invalid upload URLs response:', data);
+        this.snackBar.open('Failed to get upload configuration', '', { duration: 3000 });
+      }
+    } catch (error: any) {
+      console.error('[UploadComponent] Failed to fetch upload URLs:', error);
+      this.snackBar.open('Failed to get upload configuration', '', { duration: 3000 });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // File Upload
   // -------------------------------------------------------------------------
 
@@ -356,13 +399,30 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
+    if (!this.uploadUrls()) {
+      this.snackBar.open('Upload configuration not ready', '', { duration: 2000 });
+      return;
+    }
+
     this.isUploading.set(true);
     this.uploadProgress.set(0);
 
     try {
+      // Determine which endpoint to use based on file type
+      const isImage = this.isImageFile(file.type);
+      const uploadType = this.uploadType();
+      const urls = this.uploadUrls()!;
+      
+      // Use type from desktop field config if available, otherwise detect from file
+      const endpoint = (uploadType === 'image' || isImage) 
+        ? urls.imagePresignedUrlGenerator 
+        : urls.filePresignedUrlGenerator;
+
+      console.log('[UploadComponent] Using upload endpoint:', endpoint, 'for type:', uploadType, 'isImage:', isImage);
+
       // Step 1: Get presigned upload URL
       const uploadUrlResponse = await firstValueFrom(
-        this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}/file-upload/getUploadUrl`, {
+        this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}${endpoint}`, {
           fileName: file.name,
           contentType: file.type
         })
@@ -473,6 +533,7 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.mobileDeviceId.set('');
     this.desktopDeviceId.set('');
     this.apiUrl.set('');
+    this.uploadUrls.set(null);
     this.desktopFieldInfo.set(null);
     this.uploadedFiles.set([]);
     this.devicesStatus.set(null);
@@ -718,6 +779,11 @@ interface DesktopFieldInfo {
   isMultiple?: boolean;
   limit?: number;
   isCompressed?: boolean;
+}
+
+interface UploadUrls {
+  filePresignedUrlGenerator: string;
+  imagePresignedUrlGenerator: string;
 }
 
 interface GetUploadUrlResponse {
