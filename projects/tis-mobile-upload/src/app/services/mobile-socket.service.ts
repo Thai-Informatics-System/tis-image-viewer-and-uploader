@@ -176,6 +176,13 @@ export class MobileSocketService implements OnDestroy {
   private activeChannelSubscriptions = new Map<string, ChannelSubscriptionInfo>();
   private activePrefixes = new Set<string>();
 
+  // State transition protection
+  private isTransitioning = false;
+  private stateTransitionQueue: ConnectionState[] = [];
+
+  // Mobile device ID initialization
+  private mobileDeviceIdInitialized: Promise<void> | null = null;
+
   constructor() {
     this.initializeMobileDeviceId();
   }
@@ -188,19 +195,28 @@ export class MobileSocketService implements OnDestroy {
    * Initialize mobile device ID using fingerprint
    */
   private async initializeMobileDeviceId(): Promise<void> {
-    try {
-      this.mobileDeviceId = await this.fingerprintService.getTabFingerprint();
-      console.log(`[${MobileSocketService.COMPONENT}] Mobile Device ID:`, this.mobileDeviceId);
-    } catch (e) {
-      // Fallback
-      this.mobileDeviceId = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    if (this.mobileDeviceIdInitialized) {
+      return this.mobileDeviceIdInitialized;
     }
+
+    this.mobileDeviceIdInitialized = (async () => {
+      try {
+        this.mobileDeviceId = await this.fingerprintService.getTabFingerprint();
+        console.log(`[${MobileSocketService.COMPONENT}] Mobile Device ID:`, this.mobileDeviceId);
+      } catch (e) {
+        // Fallback
+        this.mobileDeviceId = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+      }
+    })();
+
+    return this.mobileDeviceIdInitialized;
   }
 
   /**
    * Get mobile device ID
    */
-  getMobileDeviceId(): string {
+  async getMobileDeviceId(): Promise<string> {
+    await this.initializeMobileDeviceId();
     return this.mobileDeviceId;
   }
 
@@ -366,7 +382,7 @@ export class MobileSocketService implements OnDestroy {
           token,
           deviceId: this.desktopDeviceId,
           userId: this.userId,
-          mobileDeviceId: this.mobileDeviceId
+          mobileDeviceId: await this.getMobileDeviceId()
         }).pipe(
           timeout(30000),
           catchError(err => {
@@ -396,7 +412,7 @@ export class MobileSocketService implements OnDestroy {
           accessToken: this.accessToken,
           refreshToken: this.refreshToken,
           socketUrl: this.socketUrl,
-          mobileDeviceId: this.mobileDeviceId
+          mobileDeviceId: await this.getMobileDeviceId()
         });
       }
 
@@ -466,7 +482,7 @@ export class MobileSocketService implements OnDestroy {
       const apiResponse = await firstValueFrom(
         this.http.post<TokenResponse>(endpoint, {
           refreshToken: this.refreshToken,
-          mobileDeviceId: this.mobileDeviceId,
+          mobileDeviceId: await this.getMobileDeviceId(),
           desktopDeviceId: this.desktopDeviceId
         }).pipe(
           timeout(30000),
@@ -544,9 +560,7 @@ export class MobileSocketService implements OnDestroy {
    */
   private async connect(): Promise<void> {
     // Ensure mobileDeviceId is available
-    if (!this.mobileDeviceId) {
-      await this.initializeMobileDeviceId();
-    }
+    const deviceId = await this.getMobileDeviceId();
 
     // Validate and refresh token if needed before connecting
     await this.validateAndRefreshToken();
@@ -559,7 +573,7 @@ export class MobileSocketService implements OnDestroy {
         return;
       }
       
-      if (!this.mobileDeviceId) {
+      if (!deviceId) {
         reject(new Error('Mobile device ID not available'));
         return;
       }
@@ -567,9 +581,9 @@ export class MobileSocketService implements OnDestroy {
       // Add auth token and device ID to socket URL
       const url = new URL(this.socketUrl);
       url.searchParams.set('Auth', this.accessToken);
-      url.searchParams.set('deviceId', this.mobileDeviceId);
+      url.searchParams.set('deviceId', deviceId);
 
-      console.log(`[${MobileSocketService.COMPONENT}] Connecting to WebSocket with deviceId:`, this.mobileDeviceId);
+      console.log(`[${MobileSocketService.COMPONENT}] Connecting to WebSocket with deviceId:`, deviceId);
 
       try {
         this.socket = new WebSocket(url.toString());
@@ -652,7 +666,7 @@ export class MobileSocketService implements OnDestroy {
       // Call establish-mobile-upload-link action via proper API route
       const response = await this.callApiViaSocketPromise('tis-image-mobile-uploader/establish-mobile-upload-link', {
         desktopDeviceId: this.desktopDeviceId,
-        mobileDeviceId: this.mobileDeviceId,
+        mobileDeviceId: await this.getMobileDeviceId(),
         userId: this.userId,
         channel: this.channelName
       });
@@ -694,7 +708,7 @@ export class MobileSocketService implements OnDestroy {
     try {
       // Call disconnect API
       await this.callApiViaSocketPromise('tis-image-mobile-uploader/disconnect-mobile-link', {
-        mobileDeviceId: this.mobileDeviceId,
+        mobileDeviceId: await this.getMobileDeviceId(),
         desktopDeviceId: this.desktopDeviceId,
         initiatedBy: 'mobile'
       });
@@ -1037,7 +1051,7 @@ export class MobileSocketService implements OnDestroy {
       const response = await firstValueFrom(
         this.callApiViaSocket('tis-image-mobile-uploader/check-devices-online', {
           desktopDeviceId: this.desktopDeviceId,
-          mobileDeviceId: this.mobileDeviceId
+          mobileDeviceId: await this.getMobileDeviceId()
         }).pipe(take(1), timeout(15000))
       );
 
@@ -1053,7 +1067,7 @@ export class MobileSocketService implements OnDestroy {
         },
         mobile: {
           isOnline: data?.mobile?.isOnline ?? false,
-          deviceId: data?.mobile?.deviceId || this.mobileDeviceId,
+          deviceId: data?.mobile?.deviceId || await this.getMobileDeviceId(),
           lastPing: data?.mobile?.lastPing,
           connectionId: data?.mobile?.connectionId
         },
@@ -1092,7 +1106,7 @@ export class MobileSocketService implements OnDestroy {
       // On error, mark both as unknown/offline
       const status: DevicesOnlineStatus = {
         desktop: { isOnline: false, deviceId: this.desktopDeviceId },
-        mobile: { isOnline: false, deviceId: this.mobileDeviceId },
+        mobile: { isOnline: false, deviceId: await this.getMobileDeviceId() },
         lastChecked: Date.now(),
         isReadyForTransfer: false
       };
@@ -1166,30 +1180,88 @@ export class MobileSocketService implements OnDestroy {
   private transitionTo(state: ConnectionState): void {
     if (this.connectionState === state) return;
 
-    console.log(`[${MobileSocketService.COMPONENT}] State: ${this.connectionState} -> ${state}`);
-    this.connectionState = state;
-    this._connectionState$.next(state);
-
-    // Map to simple status
-    let status: ConnectionStatus;
-    switch (state) {
-      case 'CONNECTED':
-        status = 'connected';
-        // Start health check when connected
-        this.startHealthCheck();
-        break;
-      case 'ERROR':
-        status = 'error';
-        this.stopHealthCheck();
-        break;
-      case 'DISCONNECTED':
-        status = 'disconnected';
-        this.stopHealthCheck();
-        break;
-      default:
-        status = 'connecting';
+    // If currently transitioning, queue this state transition
+    if (this.isTransitioning) {
+      console.log(`[${MobileSocketService.COMPONENT}] Queuing state transition to ${state} (currently transitioning to ${this.connectionState})`);
+      this.stateTransitionQueue.push(state);
+      return;
     }
-    this._connectionStatus$.next(status);
+
+    // Start the transition
+    this.performStateTransition(state);
+  }
+
+  private performStateTransition(state: ConnectionState): void {
+    this.isTransitioning = true;
+
+    try {
+      console.log(`[${MobileSocketService.COMPONENT}] State: ${this.connectionState} -> ${state}`);
+      this.connectionState = state;
+      this._connectionState$.next(state);
+
+      // Log and handle each state transition explicitly
+      switch (state) {
+        case 'IDLE':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: IDLE - Service is idle, waiting for initialization`);
+          this._connectionStatus$.next('disconnected');
+          break;
+        case 'VALIDATING_TOKEN':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: VALIDATING_TOKEN - Validating QR code token with backend`);
+          this._connectionStatus$.next('connecting');
+          break;
+        case 'CONNECTING':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: CONNECTING - Establishing WebSocket connection`);
+          this._connectionStatus$.next('connecting');
+          break;
+        case 'ESTABLISHING_LINK':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: ESTABLISHING_LINK - Setting up mobile-desktop link`);
+          this._connectionStatus$.next('connecting');
+          break;
+        case 'WAITING_FOR_DESKTOP':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: WAITING_FOR_DESKTOP - Waiting for desktop confirmation`);
+          this._connectionStatus$.next('connecting');
+          break;
+        case 'CONNECTED':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: CONNECTED - Successfully connected to desktop`);
+          this._connectionStatus$.next('connected');
+          // Start health check when connected
+          this.startHealthCheck();
+          break;
+        case 'RECONNECTING':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: RECONNECTING - Attempting to reconnect after disconnection`);
+          this._connectionStatus$.next('connecting');
+          break;
+        case 'ERROR':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: ERROR - Connection failed or encountered an error`);
+          this._connectionStatus$.next('error');
+          this.stopHealthCheck();
+          break;
+        case 'DISCONNECTED':
+          console.log(`[${MobileSocketService.COMPONENT}] 🔄 State: DISCONNECTED - Connection terminated`);
+          this._connectionStatus$.next('disconnected');
+          this.stopHealthCheck();
+          break;
+        default:
+          console.warn(`[${MobileSocketService.COMPONENT}] ⚠️ Unknown state transition to: ${state}`);
+          this._connectionStatus$.next('connecting');
+      }
+
+      // Process next queued transition if any
+      this.processNextQueuedTransition();
+
+    } finally {
+      this.isTransitioning = false;
+    }
+  }
+
+  private processNextQueuedTransition(): void {
+    if (this.stateTransitionQueue.length > 0) {
+      const nextState = this.stateTransitionQueue.shift()!;
+      console.log(`[${MobileSocketService.COMPONENT}] Processing queued state transition to ${nextState}`);
+      
+      // Use setTimeout to ensure the current transition is fully complete
+      setTimeout(() => this.performStateTransition(nextState), 0);
+    }
   }
 
   // ===========================================================================

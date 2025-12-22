@@ -209,16 +209,13 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     // Try to restore from stored session
     if (this.socketService.hasStoredSession()) {
+      console.log('[UploadComponent] Restoring from stored session...');
       try {
         this.isInitializing.set(true);
         this.initError.set(null);
         
         await this.socketService.retryFromStoredSession();
-        
-        this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
-        this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
-        this.apiUrl.set(this.socketService.getApiUrl());
-        this.isInitializing.set(false);
+        await this.setConnectionState();
         this.snackBar.open('Reconnected to desktop!', '', { duration: 2000 });
         return;
       } catch (error: any) {
@@ -238,11 +235,7 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     try {
       await this.socketService.initialize(params);
-      
-      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
-      this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
-      this.apiUrl.set(params.apiUrl);
-      this.isInitializing.set(false);
+      await this.setConnectionState();
       this.snackBar.open('Connected to desktop!', '', { duration: 2000 });
 
     } catch (error: any) {
@@ -250,6 +243,13 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.isInitializing.set(false);
       this.initError.set(error.message || 'Failed to connect. Please scan a new QR code.');
     }
+  }
+
+  private async setConnectionState(): Promise<void> {
+    this.mobileDeviceId.set(await this.socketService.getMobileDeviceId());
+    this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
+    this.apiUrl.set(this.socketService.getApiUrl());
+    this.isInitializing.set(false);
   }
 
   // -------------------------------------------------------------------------
@@ -526,11 +526,7 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     try {
       await this.socketService.retryFromStoredSession();
-      
-      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
-      this.desktopDeviceId.set(this.socketService.getDesktopDeviceId());
-      this.apiUrl.set(this.socketService.getApiUrl());
-      this.isInitializing.set(false);
+      await this.setConnectionState();
       this.snackBar.open('Reconnected to desktop!', '', { duration: 2000 });
     } catch (error: any) {
       console.error('[UploadComponent] Retry connection failed:', error);
@@ -761,31 +757,10 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.stopScanning();
     
     // Show connecting state
-    this.isInitializing.set(true);
-    this.initError.set(null);
     this.snackBar.open('QR code scanned successfully! Connecting...', 'OK', { duration: 2000 });
     
-    try {
-      // Store device IDs and API URL
-      this.apiUrl.set(params.apiUrl);
-      this.desktopDeviceId.set(params.deviceId);
-      
-      // Initialize connection via socket service
-      await this.socketService.initialize(params);
-      
-      // Get mobile device ID after initialization
-      this.mobileDeviceId.set(this.socketService.getMobileDeviceId());
-      
-      // Connection state will be updated by mobile-link-established message
-      // Just clear initializing flag here
-      this.isInitializing.set(false);
-      
-    } catch (error: any) {
-      console.error('[QR Scanner] Connection failed:', error);
-      this.isInitializing.set(false);
-      this.initError.set(error.message || 'Connection failed. Please try again.');
-      this.snackBar.open('Connection failed. Please try again.', 'OK', { duration: 3000 });
-    }
+    // Use the same initialization logic as manual connection
+    await this.initializeConnection(params);
   }
 }
 
