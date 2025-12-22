@@ -89,6 +89,8 @@ export class MobileUploadService {
    * @param uploadedData - The data from library's onUploaded event
    */
   async sendToDesktop(uploadedData: any): Promise<void> {
+    console.log('[MobileUploadService] 🔵 sendToDesktop called with:', uploadedData);
+    
     try {
       // Normalize the data (library can emit single file or array)
       const files = this.normalizeUploadedData(uploadedData);
@@ -98,26 +100,32 @@ export class MobileUploadService {
         return;
       }
 
+      console.log('[MobileUploadService] 🔵 Normalized files:', files);
+
       // Store locally
       this._uploadedFiles.update(current => [...current, ...files]);
 
-      // Send to desktop via API call
-      await this.socketService.callApiViaSocketPromise('tis-image-mobile-uploader/file-uploaded', {
-        mobileDeviceId: this.socketService.getMobileDeviceId(),
+      const payload = {
+        mobileDeviceId: await this.socketService.getMobileDeviceId(),
         desktopDeviceId: this.socketService.getDesktopDeviceId(),
         channel: this.socketService.getChannelName(),
         files,
         totalCount: files.length,
         uploadedAt: Date.now()
-      });
+      };
+
+      console.log('[MobileUploadService] 🔵 Sending payload to socket:', payload);
+
+      // Send to desktop via API call
+      await this.socketService.callApiViaSocketPromise('tis-image-mobile-uploader/file-uploaded', payload);
 
       this._lastSentAt.set(Date.now());
       this._sendError.set(null);
 
-      console.log('[MobileUploadService] Sent to desktop:', files);
+      console.log('[MobileUploadService] ✅ Successfully sent to desktop');
 
     } catch (error: any) {
-      console.error('[MobileUploadService] Failed to send to desktop:', error);
+      console.error('[MobileUploadService] ❌ Failed to send to desktop:', error);
       this._sendError.set(error.message || 'Failed to send to desktop');
     }
   }

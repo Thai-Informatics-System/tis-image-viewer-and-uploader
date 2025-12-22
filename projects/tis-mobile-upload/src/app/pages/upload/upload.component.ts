@@ -467,7 +467,9 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.uploadedFiles.update(files => [...files, uploadedFile]);
 
       // Step 4: Send to desktop via API
+      console.log('[UploadComponent] 🔵 Calling sendToDesktop with:', uploadedFile);
       await this.uploadService.sendToDesktop(uploadedFile);
+      console.log('[UploadComponent] ✅ sendToDesktop completed');
 
       this.snackBar.open('File sent to desktop!', '', { duration: 2000 });
 
