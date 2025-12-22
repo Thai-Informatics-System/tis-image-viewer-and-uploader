@@ -105,6 +105,7 @@ export class MobileUploadService {
       await this.socketService.callApiViaSocketPromise('tis-image-mobile-uploader/file-uploaded', {
         mobileDeviceId: this.socketService.getMobileDeviceId(),
         desktopDeviceId: this.socketService.getDesktopDeviceId(),
+        channel: this.socketService.getChannelName(),
         files,
         totalCount: files.length,
         uploadedAt: Date.now()

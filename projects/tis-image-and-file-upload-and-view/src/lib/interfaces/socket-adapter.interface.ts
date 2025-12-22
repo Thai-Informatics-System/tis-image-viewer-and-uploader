@@ -120,9 +120,22 @@ export interface TisRemoteUploadConfig {
   pairing?: TisPairingConfig;
 
   /**
-   * Callback when user accepts a file from mobile upload
-   * This allows the host app to handle the accepted file (e.g., patch a form)
-   * @param file - The accepted file data
+   * Auto-accept files from mobile without manual confirmation
+   * When true: Files are automatically shown in the component UI and attached to the form.
+   *            The onFileAccept callback is also called for additional processing.
+   * When false: Files are NOT shown in the component UI or attached to the form.
+   *             Only the onFileAccept callback is called, allowing the host app to
+   *             handle the file display and processing in a custom way.
+   * Default: false
+   */
+  autoAcceptFiles?: boolean;
+
+  /**
+   * Callback when a file is uploaded from mobile device
+   * - If autoAcceptFiles=true: Called after file is added to component UI and form
+   * - If autoAcceptFiles=false: Called immediately (only way to access the file)
+   * This allows the host app to handle the file (e.g., patch a form control, custom display)
+   * @param file - The uploaded file data
    */
   onFileAccept?: (file: TisRemoteUploadedFile) => void;
 }

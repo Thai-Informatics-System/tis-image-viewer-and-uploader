@@ -219,6 +219,13 @@ export class MobileSocketService implements OnDestroy {
   }
 
   /**
+   * Get channel name
+   */
+  getChannelName(): string {
+    return this.channelName;
+  }
+
+  /**
    * Check if connected
    */
   isConnected(): boolean {
@@ -250,6 +257,10 @@ export class MobileSocketService implements OnDestroy {
    */
   async initialize(params: QrCodeParams): Promise<void> {
     console.log(`[${MobileSocketService.COMPONENT}] Initializing with params:`, params);
+
+    // Clear any old session data to avoid conflicts
+    // This ensures we always use the desktop device ID from the new QR code
+    this.clearStoredSession();
 
     // Store params
     this.qrParams = params;

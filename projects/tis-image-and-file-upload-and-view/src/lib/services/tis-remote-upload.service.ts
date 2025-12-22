@@ -900,7 +900,7 @@ export class TisRemoteUploadService implements OnDestroy {
 
   /**
    * Handle upload complete from mobile
-   * Files are added to pending queue for user to accept/reject
+   * Files are either auto-accepted or added to pending queue based on config
    */
   private handleUploadComplete(message: any): void {
     const data = message.data || message.payload || message;
@@ -913,7 +913,7 @@ export class TisRemoteUploadService implements OnDestroy {
         // Normalize the file object
         const normalizedFile: TisRemoteUploadedFile = {
           s3Url: file.s3Url || file.resourceUrl || file.uploadData?.resourceUrl || '',
-          fileName: file.fileName || file.filename || file.name || file.title || 'unknown',
+          fileName: file.fileName || file.filename || file.name || file.title || file.uploadData?.fileName || file.uploadData?.photoFilename || 'unknown',
           mimeType: file.mimeType || file.type || 'application/octet-stream',
           size: file.size || 0,
           thumbnailUrl: file.thumbnailUrl,
@@ -928,11 +928,27 @@ export class TisRemoteUploadService implements OnDestroy {
           sessionId: data.sessionId
         };
 
-        // Add to pending files (user will accept/reject)
-        const currentPending = this.pendingFiles$.value;
-        this.pendingFiles$.next([...currentPending, event]);
-
-        console.log(`[${TisRemoteUploadService.COMPONENT}] File added to pending:`, normalizedFile.fileName);
+        // Check if auto-accept is enabled
+        if (this.config?.autoAcceptFiles) {
+          // Auto-accept: emit to remoteUpload$ (component will show in UI and attach to form)
+          this.remoteUpload$.next(event);
+          console.log(`[${TisRemoteUploadService.COMPONENT}] File auto-accepted (showing in UI):`, normalizedFile.fileName);
+          
+          // Call onFileAccept callback if provided
+          if (this.config?.onFileAccept) {
+            this.config.onFileAccept(normalizedFile);
+          }
+        } else {
+          // Auto-accept OFF: Only call callback, don't show in UI or attach to form
+          console.log(`[${TisRemoteUploadService.COMPONENT}] File received (not auto-accepting, callback only):`, normalizedFile.fileName);
+          
+          // Call onFileAccept callback if provided (host app handles display/processing)
+          if (this.config?.onFileAccept) {
+            this.config.onFileAccept(normalizedFile);
+          }
+          // Note: File is NOT added to pending queue or emitted to remoteUpload$
+          // The host app's onFileAccept callback is responsible for handling the file
+        }
       }
     }
 

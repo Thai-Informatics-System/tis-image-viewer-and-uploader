@@ -426,8 +426,8 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
       // Step 1: Get presigned upload URL
       const requestBody: any = {
-        fileName: file.name,
-        contentType: file.type
+        filename: file.name,
+        mimeType: file.type
       };
 
       // Add entityType if available
@@ -441,20 +441,26 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.http.post<GetUploadUrlResponse>(`${this.apiUrl()}${endpoint}`, requestBody)
       );
 
-      if (!uploadUrlResponse?.uploadUrl || !uploadUrlResponse?.s3Url) {
+      console.log('[UploadComponent] Upload URL response:', uploadUrlResponse);
+
+      // Extract upload data from response
+      const uploadData = uploadUrlResponse?.data?.uploadUrlData || uploadUrlResponse?.uploadUrlData;
+      
+      if (!uploadData?.uploadURL) {
+        console.error('[UploadComponent] Invalid upload URL response:', uploadUrlResponse);
         throw new Error('Failed to get upload URL');
       }
 
       // Step 2: Upload to S3
-      await this.uploadToS3(uploadUrlResponse.uploadUrl, file);
+      await this.uploadToS3(uploadData.uploadURL, file);
 
       // Step 3: Create uploaded file record
       const uploadedFile: UploadedFile = {
-        s3Url: uploadUrlResponse.s3Url,
+        s3Url: uploadData.resourceUrl,
         fileName: file.name,
         mimeType: file.type,
         size: file.size,
-        uploadData: uploadUrlResponse.uploadData
+        uploadData: uploadData
       };
 
       // Add to local list
@@ -541,8 +547,13 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Mark as intentional disconnect
     this.isIntentionalDisconnect.set(true);
     
-    // Immediately update UI state before async operations
+    // Set error state FIRST to trigger UI transition
+    this.initError.set('Disconnected. Please scan the QR code from the desktop app to reconnect.');
+    
+    // Then update connection state
     this.connectionStatus.set('disconnected');
+    
+    // Clear all state
     this.mobileDeviceId.set('');
     this.desktopDeviceId.set('');
     this.apiUrl.set('');
@@ -552,7 +563,6 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.devicesStatus.set(null);
     this.isCheckingStatus.set(false);
     this.isInitializing.set(false);
-    this.initError.set('Disconnected. Please scan the QR code from the desktop app to reconnect.');
     
     // Now perform async disconnect operations
     try {
@@ -800,9 +810,27 @@ interface UploadUrls {
 }
 
 interface GetUploadUrlResponse {
-  uploadUrl: string;
-  s3Url: string;
-  uploadData?: any;
+  data?: {
+    uploadUrlData?: {
+      uploadURL: string;
+      resourceUrl: string;
+      photoFilename: string;
+      fileName: string;
+      uploadPath: string;
+      headers?: any;
+      isBase64Encoded?: boolean;
+    };
+  };
+  uploadUrlData?: {
+    uploadURL: string;
+    resourceUrl: string;
+    photoFilename: string;
+    fileName: string;
+    uploadPath: string;
+    headers?: any;
+    isBase64Encoded?: boolean;
+  };
+  message?: string;
 }
 
 interface UploadedFile {
