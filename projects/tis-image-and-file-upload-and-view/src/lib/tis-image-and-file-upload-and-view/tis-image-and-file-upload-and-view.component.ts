@@ -230,12 +230,23 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
       this.prepareConfig();
     }
     if (changes['data']) {
-      this.filesArray = changes['data']?.currentValue ?? [];
-      this.filesArray = this.filesArray?.map(r => {
-        r.loading = false;
-        return r;
-      });
-      console.log("this.filesArray", this.filesArray);
+      const incomingData = changes['data']?.currentValue ?? [];
+      
+      // Merge with existing, avoiding duplicates by s3Url
+      const existingUrls = new Set(this.filesArray.map((f: any) => f.s3Url));
+      const newFiles = incomingData.filter((f: any) => !existingUrls.has(f.s3Url));
+      
+      // If new files exist or filesArray is empty, update with incoming data
+      // If all incoming files already exist, keep the existing filesArray
+      if (newFiles.length > 0 || this.filesArray.length === 0) {
+        this.filesArray = incomingData.map((r: any) => {
+          r.loading = false;
+          return r;
+        });
+        console.log("this.filesArray", this.filesArray);
+      } else {
+        console.log("this.filesArray - skipped duplicate data update");
+      }
     }
     if(changes['viewType'] && changes['viewType'].currentValue == 'compact'){
       this.config.limit = 1;
