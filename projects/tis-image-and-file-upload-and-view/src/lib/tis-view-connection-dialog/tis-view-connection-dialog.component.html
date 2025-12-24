@@ -9,7 +9,7 @@
   <mat-dialog-content class="dialog-content">
     @if (mobileConnection) {
       <!-- Connection Info Card -->
-      <div class="connection-card">
+      <div class="connection-card elevation-card">
         <div class="connection-header">
           <div class="status-indicator" [class.online]="devicesStatus?.isReadyForTransfer" [class.blinking]="isCheckingStatus">
             <mat-icon>{{ devicesStatus?.isReadyForTransfer ? 'check_circle' : 'error' }}</mat-icon>
@@ -18,28 +18,28 @@
             </span>
           </div>
           <button 
-            mat-button 
+            mat-stroked-button
             color="primary" 
             class="refresh-btn"
             (click)="refreshStatus()"
             [disabled]="isCheckingStatus">
             <mat-icon [class.spinning]="isCheckingStatus">refresh</mat-icon>
-            <span>Refresh</span>
+            <span class="refresh-text">Refresh</span>
           </button>
         </div>
 
         <div class="connection-details">
           <div class="detail-row">
-            <span class="detail-label">Mobile Device ID:</span>
+            <span class="detail-label">Mobile Device ID</span>
             <span class="detail-value">{{ truncateDeviceId(mobileConnection.mobileDeviceId) }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Connected For:</span>
+            <span class="detail-label">Connected For</span>
             <span class="detail-value">{{ getConnectionDuration() }}</span>
           </div>
           @if (mobileConnection.connectedAt) {
             <div class="detail-row">
-              <span class="detail-label">Connected At:</span>
+              <span class="detail-label">Connected At</span>
               <span class="detail-value">{{ mobileConnection.connectedAt | date:'short' }}</span>
             </div>
           }
@@ -48,7 +48,7 @@
 
       <!-- Devices Status Card -->
       @if (devicesStatus) {
-        <div class="devices-status-card">
+        <div class="devices-status-card elevation-card">
           <h3 class="card-title">Device Status</h3>
           
           <div class="device-status-row">
@@ -59,13 +59,15 @@
                 <div class="device-id">{{ truncateDeviceId(devicesStatus.desktop.deviceId) }}</div>
               </div>
             </div>
-            <div class="status-badge" [class.online]="devicesStatus.desktop.isOnline">
-              <mat-icon>{{ devicesStatus.desktop.isOnline ? 'circle' : 'cancel' }}</mat-icon>
-              <span>{{ devicesStatus.desktop.isOnline ? 'Online' : 'Offline' }}</span>
+            <div class="device-status-info">
+              <div class="status-badge" [class.online]="devicesStatus.desktop.isOnline">
+                <mat-icon>{{ devicesStatus.desktop.isOnline ? 'circle' : 'cancel' }}</mat-icon>
+                <span>{{ devicesStatus.desktop.isOnline ? 'Online' : 'Offline' }}</span>
+              </div>
+              @if (devicesStatus.desktop.lastPing) {
+                <div class="last-ping">{{ getLastPing(devicesStatus.desktop.lastPing) }}</div>
+              }
             </div>
-            @if (devicesStatus.desktop.lastPing) {
-              <div class="last-ping">Last ping: {{ getLastPing(devicesStatus.desktop.lastPing) }}</div>
-            }
           </div>
 
           <mat-divider></mat-divider>
@@ -78,13 +80,15 @@
                 <div class="device-id">{{ truncateDeviceId(devicesStatus.mobile.deviceId) }}</div>
               </div>
             </div>
-            <div class="status-badge" [class.online]="devicesStatus.mobile.isOnline">
-              <mat-icon>{{ devicesStatus.mobile.isOnline ? 'circle' : 'cancel' }}</mat-icon>
-              <span>{{ devicesStatus.mobile.isOnline ? 'Online' : 'Offline' }}</span>
+            <div class="device-status-info">
+              <div class="status-badge" [class.online]="devicesStatus.mobile.isOnline">
+                <mat-icon>{{ devicesStatus.mobile.isOnline ? 'circle' : 'cancel' }}</mat-icon>
+                <span>{{ devicesStatus.mobile.isOnline ? 'Online' : 'Offline' }}</span>
+              </div>
+              @if (devicesStatus.mobile.lastPing) {
+                <div class="last-ping">{{ getLastPing(devicesStatus.mobile.lastPing) }}</div>
+              }
             </div>
-            @if (devicesStatus.mobile.lastPing) {
-              <div class="last-ping">Last ping: {{ getLastPing(devicesStatus.mobile.lastPing) }}</div>
-            }
           </div>
         </div>
       }
