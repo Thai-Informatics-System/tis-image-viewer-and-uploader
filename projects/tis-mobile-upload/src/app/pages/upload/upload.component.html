@@ -151,16 +151,15 @@
             <span>Uploading to: <strong>{{ desktopFieldInfo()?.label }}</strong></span>
           </div>
 
-          <!-- Instruction Message -->
-          <div class="instruction-message">
-            <mat-icon>info</mat-icon>
-            <span>
-              Tap the button below to select files. They will be uploaded and sent to your desktop.
-            </span>
-          </div>
+          <!-- Instruction Message and Upload Button -->
+          @if (isReady() && !isUploading() && uploadedFiles().length === 0) {
+            <div class="instruction-message">
+              <mat-icon>info</mat-icon>
+              <span>
+                Tap the button below to select files. They will be uploaded and sent to your desktop.
+              </span>
+            </div>
 
-          <!-- Upload Button -->
-          @if (isReady() && !isUploading()) {
             <div class="upload-section">
               <button mat-raised-button color="primary" class="upload-btn" (click)="openFileSelector()">
                 <mat-icon>{{ uploadType() === 'image' ? 'add_photo_alternate' : 'upload_file' }}</mat-icon>

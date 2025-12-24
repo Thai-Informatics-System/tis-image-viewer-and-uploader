@@ -301,6 +301,9 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Desktop requests upload for a specific field - show upload UI
         const field = message['field'];
         if (field) {
+          // Clear previously uploaded files for new field request
+          this.uploadedFiles.set([]);
+          
           this.desktopFieldInfo.set({
             label: field.label,
             accept: field.accept,
