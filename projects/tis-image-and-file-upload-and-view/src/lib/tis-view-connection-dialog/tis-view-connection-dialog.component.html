@@ -35,7 +35,7 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">Connected For</span>
-            <span class="detail-value">{{ getConnectionDuration() }}</span>
+            <span class="detail-value">{{ mobileConnection.connectedAt | timeAgo:'long' }}</span>
           </div>
           @if (mobileConnection.connectedAt) {
             <div class="detail-row">
@@ -65,7 +65,7 @@
                 <span>{{ devicesStatus.desktop.isOnline ? 'Online' : 'Offline' }}</span>
               </div>
               @if (devicesStatus.desktop.lastPing) {
-                <div class="last-ping">{{ getLastPing(devicesStatus.desktop.lastPing) }}</div>
+                <div class="last-ping">{{ devicesStatus.desktop.lastPing | timeAgo }}</div>
               }
             </div>
           </div>
@@ -86,7 +86,7 @@
                 <span>{{ devicesStatus.mobile.isOnline ? 'Online' : 'Offline' }}</span>
               </div>
               @if (devicesStatus.mobile.lastPing) {
-                <div class="last-ping">{{ getLastPing(devicesStatus.mobile.lastPing) }}</div>
+                <div class="last-ping">{{ devicesStatus.mobile.lastPing | timeAgo }}</div>
               }
             </div>
           </div>

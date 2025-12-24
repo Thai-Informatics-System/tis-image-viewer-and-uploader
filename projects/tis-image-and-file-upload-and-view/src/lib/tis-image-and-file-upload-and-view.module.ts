@@ -17,6 +17,7 @@ import { TisPdfViewerComponent } from './tis-file-viewer/tis-pdf-viewer/tis-pdf-
 import { TisVideoComponent } from './tis-file-viewer/tis-video/tis-video.component';
 import { TisQrCodeDialogComponent } from './tis-qr-code-dialog/tis-qr-code-dialog.component';
 import { TisViewConnectionDialogComponent } from './tis-view-connection-dialog/tis-view-connection-dialog.component';
+import { TimeAgoPipe } from './pipes/time-ago.pipe';
 import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -48,7 +49,8 @@ const uiImports = [
     TisErrorDialogComponent,
     TisConfirmationDialogComponent,
     TisQrCodeDialogComponent,
-    TisViewConnectionDialogComponent
+    TisViewConnectionDialogComponent,
+    TimeAgoPipe
   ],
   imports: [
     CommonModule,

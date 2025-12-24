@@ -100,48 +100,6 @@ export class TisViewConnectionDialogComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get formatted connection time
-   */
-  getConnectionDuration(): string {
-    if (!this.mobileConnection?.connectedAt) {
-      return 'Unknown';
-    }
-
-    const duration = Date.now() - this.mobileConnection.connectedAt;
-    const minutes = Math.floor(duration / 60000);
-    const hours = Math.floor(minutes / 60);
-    
-    if (hours > 0) {
-      const remainingMinutes = minutes % 60;
-      return `${hours}h ${remainingMinutes}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m`;
-    } else {
-      return 'Just now';
-    }
-  }
-
-  /**
-   * Get last ping time formatted
-   */
-  getLastPing(timestamp: number | undefined): string {
-    if (!timestamp) {
-      return 'Never';
-    }
-
-    const secondsAgo = Math.floor((Date.now() - timestamp) / 1000);
-    
-    if (secondsAgo < 10) {
-      return 'Just now';
-    } else if (secondsAgo < 60) {
-      return `${secondsAgo}s ago`;
-    } else {
-      const minutesAgo = Math.floor(secondsAgo / 60);
-      return `${minutesAgo}m ago`;
-    }
-  }
-
-  /**
    * Truncate device ID to show first 8 and last 8 characters
    */
   truncateDeviceId(deviceId: string): string {
