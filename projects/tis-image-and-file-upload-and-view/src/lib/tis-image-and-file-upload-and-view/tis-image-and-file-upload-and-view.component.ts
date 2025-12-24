@@ -1913,6 +1913,13 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     // Reset waiting state
     this.isWaitingForMobileUpload = false;
 
+    // Check if file already exists (prevent duplicates)
+    const fileExists = this.filesArray.some((f: any) => f.s3Url === event.file.s3Url);
+    if (fileExists) {
+      console.log('[TisImageAndFileUploadAndView] File already exists, skipping:', event.file.fileName);
+      return;
+    }
+
     // Check if we've reached the limit
     if (this.config?.limit && this.filesArray.length >= this.config.limit) {
       this.helper.showErrorMsg(`Maximum limit of ${this.config.limit} files reached.`, 'Limit Reached');
