@@ -383,7 +383,27 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
 
-    const files = Array.from(input.files);
+    const fieldInfo = this.desktopFieldInfo();
+    const currentCount = this.uploadedFiles().length;
+    const limit = fieldInfo?.limit;
+
+    let files = Array.from(input.files);
+    
+    // Enforce limit if specified
+    if (limit !== undefined && limit !== null) {
+      const remaining = limit - currentCount;
+      
+      if (remaining <= 0) {
+        this.snackBar.open(`Upload limit reached (${limit} file${limit !== 1 ? 's' : ''})`, '', { duration: 3000 });
+        input.value = '';
+        return;
+      }
+      
+      if (files.length > remaining) {
+        files = files.slice(0, remaining);
+        this.snackBar.open(`Only ${remaining} more file${remaining !== 1 ? 's' : ''} allowed (limit: ${limit})`, '', { duration: 4000 });
+      }
+    }
     
     for (const file of files) {
       await this.uploadFile(file);

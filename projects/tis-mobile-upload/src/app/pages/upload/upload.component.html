@@ -4,7 +4,7 @@
     type="file" 
     #fileInput 
     [accept]="acceptTypes()" 
-    multiple 
+    [attr.multiple]="desktopFieldInfo()?.isMultiple ? true : null"
     (change)="onFileSelected($event)" 
     style="display: none;" 
   />
