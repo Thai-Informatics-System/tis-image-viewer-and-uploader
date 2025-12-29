@@ -494,12 +494,13 @@
 .main-upload-wrapper {
     position: relative;
     width: 100%;
+    overflow: hidden;
 }
 
 /* Mobile Upload Button Styles */
 .mobile-upload-overlay {
     position: absolute;
-    top: 16px;
+    top: 0px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
@@ -513,7 +514,7 @@
 
 .mobile-upload-overlay-grid {
     position: absolute;
-    top: 8px;
+    top: 4px;
     left: 8px;
     right: 8px;
     z-index: 10;
@@ -536,7 +537,7 @@
 }
 
 .upload-content.with-mobile {
-    margin-top: 60px;
+    margin-top: 70px;
 }
 
 .mobile-upload-section {
@@ -626,7 +627,7 @@
     border-radius: 12px;
     padding: 24px;
     transition: all 0.3s ease;
-    min-height: 120px;
+    height: var(--tis-image-picker-height, 130px);
     box-sizing: border-box;
     position: relative;
     width: 100%;
@@ -635,6 +636,7 @@
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    overflow: hidden;
 }
 
 .main-upload-label:hover {
