@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
-import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, UrlConfig } from 'tis-image-and-file-upload-and-view';
+import { Component, inject } from '@angular/core';
+import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, TisRemoteUploadApiEndpoints, TisRemoteUploadConfig, UrlConfig } from 'tis-image-and-file-upload-and-view';
+import { MockSocketAdapterService } from './services/mock-socket-adapter.service';
 
 @Component({
   selector: 'app-root',
@@ -147,8 +148,40 @@ export class AppComponent {
     colsForMobile: 3,
   }
 
-  ngOnInit() {
+
+  private readonly socketAdapter = inject(MockSocketAdapterService);
+  private apiEndpoints!: TisRemoteUploadApiEndpoints;
+  remoteUploadConfig!: TisRemoteUploadConfig;
+
+  async ngOnInit() {
     console.log('Testing with entityId:', this.entityId, 'entityType:', this.entityType);
+
+    const deviceId = await this.socketAdapter.getDeviceId();
+    this.apiEndpoints = {
+      generatePairingCode: `http://localhost:3000/dev/ease-of-access/mobile-upload-pairing-code`,
+      validatePairingCode: `http://localhost:3000/dev/ease-of-access/validate-mobile-upload-pairing-code`,
+      uploadChannelPrefix: `tis-mobile-upload-w-dev-${deviceId}`
+    };
+    this.remoteUploadConfig = {
+      enabled: true,  // Set to true to enable remote upload
+      apiEndpoints: this.apiEndpoints,
+      socketAdapter: this.socketAdapter,
+      qrCode: {
+        mobileUploadUrl: 'http://localhost:4202/',
+        expirySeconds: 300,
+        size: 200
+      },
+      autoAcceptFiles: true,
+      onFileAccept: (file) => {
+        console.log("==== onFileAccept callback ====", file);
+      },
+      pairing: {
+        persistInStorage: true,
+        pairingTTL: 24 * 60 * 60 * 1000,
+        autoReconnect: true
+      }
+    };
+
   }
 
   getImagePickerDialogConfig() {

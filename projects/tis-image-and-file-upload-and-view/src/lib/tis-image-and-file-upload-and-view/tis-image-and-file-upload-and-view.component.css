@@ -163,20 +163,28 @@
 }
 
 .image-picker-label {
-    border: 1px dashed rgba(0, 0, 0, 0.38);
+    border: none;
     border-radius: 4px;
-    padding: 24px;
+    padding: 0;
+    box-sizing: border-box;
     /* height: 130px; */
+}
+
+.image-picker-label:has(.image-list) {
+    border: 2px solid #e3e8ef;
+    padding: 16px;
 }
 
 .image-picker-label.error {
     border: 2px dashed var(--tis-error, #a00404);
+    padding: 16px;
 }
 
 .image-picker-label-compact {
     border: 1px dashed rgba(0, 0, 0, 0.38);
     border-radius: 4px;
     padding: 4px;
+    box-sizing: border-box;
 }
 
 .image-picker-label-compact.error {
@@ -227,8 +235,16 @@
 }
 
 .image-list .image-item.uploader {
-    border: 1px dashed rgba(0, 0, 0, 0.38) !important;
+    border: 2px dashed #d0d5dd !important;
     cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.image-list .image-item.uploader:hover {
+    border-color: var(--tis-primary, #1F6AAD) !important;
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f9fc 100%);
+    box-shadow: 0 2px 8px rgba(31, 106, 173, 0.08);
 }
 
 .image-list .image-item:hover .mat-icon {
@@ -472,50 +488,194 @@
 /* Extra Extra Extra large devices (large desktops, 1600px and up) */
 @media (min-width: 1600px) {}
 
+/* Main Upload Wrapper */
+.main-upload-wrapper {
+    position: relative;
+    width: 100%;
+}
+
 /* Mobile Upload Button Styles */
+.mobile-upload-overlay {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    pointer-events: all;
+}
+
+.mobile-upload-overlay-grid {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    pointer-events: all;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    width: 100%;
+}
+
+.upload-content.with-mobile {
+    margin-top: 60px;
+}
+
+.mobile-upload-section {
+    padding: 16px;
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fc 100%);
+    border: 1px solid #e3e8ef;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+}
+
+.mobile-upload-section.grid-mobile-section {
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
 .mobile-upload-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    background-color: var(--tis-primary, #1F6AAD);
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, var(--tis-primary, #1F6AAD) 0%, #1a5a94 100%);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(31, 106, 173, 0.2);
+    letter-spacing: 0.3px;
+    box-sizing: border-box;
+}
+
+.mobile-upload-btn.compact {
+    padding: 8px 14px;
+    font-size: 13px;
 }
 
 .mobile-upload-btn:hover {
-    background-color: var(--tis-primary-dark, #175080);
+    background: linear-gradient(135deg, #175080 0%, #134066 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(31, 106, 173, 0.3);
+}
+
+.mobile-upload-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(31, 106, 173, 0.2);
 }
 
 .mobile-upload-btn.connected {
-    background-color: #4caf50;
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
 }
 
 .mobile-upload-btn.connected:hover {
-    background-color: #388e3c;
+    background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
 .mobile-upload-btn mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
 }
 
 .mobile-upload-btn span {
     white-space: nowrap;
+    font-weight: 600;
 }
 
 /* Mobile Upload Actions Container */
 .mobile-upload-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-top: 8px;
+    gap: 8px;
+}
+
+/* Main Upload Label - clearer separation */
+.main-upload-label {
+    background: white;
+    border: 2px dashed #d0d5dd;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+    min-height: 120px;
+    box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.main-upload-label:hover {
+    border-color: var(--tis-primary, #1F6AAD);
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f9fc 100%);
+    box-shadow: 0 2px 8px rgba(31, 106, 173, 0.08);
+}
+
+/* View Connection Button */
+.view-connection-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: white;
+    color: var(--tis-primary, #1F6AAD);
+    border: 2px solid var(--tis-primary, #1F6AAD);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(31, 106, 173, 0.1);
+}
+
+.view-connection-btn.compact {
+    padding: 8px;
+}
+
+.view-connection-btn:hover {
+    background: var(--tis-primary, #1F6AAD);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(31, 106, 173, 0.25);
+}
+
+.view-connection-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(31, 106, 173, 0.15);
+}
+
+.view-connection-btn mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
 }
 
 /* Disconnect Button */

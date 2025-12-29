@@ -2,6 +2,19 @@
     <p><strong>Testing EntityId:</strong> {{ entityId }} | <strong>EntityType:</strong> {{ entityType }}</p>
     <br>
 
+    <h3 for="">Mobile Upload Support</h3>
+    <tis-image-and-file-upload-and-view entityType="parcel_create"
+        [urlConfig]="urlConfig"  [entityId]="entityId" [entityType]="entityType"
+        [options]="{selectorId: 'choosing-img-for-parcel', height: '130px', isMultiple: true, limit: 3, cols: 5, isCompressed: false, hiddenDeleteBtn: false, hiddenPreview: false}"
+        label="Upload Image" hint="choose image and upload"
+        accept="image/*" [isEnableCapture]="true"
+        [remoteUploadConfig]="remoteUploadConfig"
+        >
+    </tis-image-and-file-upload-and-view>
+    <br><br>
+    <br><br>
+    <br><br>
+
     <h3 for="">Images with Card & Tags</h3>
     <tis-image-and-file-upload-and-view [enableDragNDrop]="true" (dataSequenceChange)="dataSequenceChange($event)" type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view-for-card-tags', limit: 10, enableImageTags: true, isMultiple: true, cols: 4})"

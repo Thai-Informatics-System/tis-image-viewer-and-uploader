@@ -81,13 +81,40 @@
                             </div>
                         }
                         @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
-                            <div class="flex flex-col">
+                            <div class="flex flex-col" style="position: relative;">
                                 @if(isShowImageSequence){
                                     <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
                                     </div>
                                 }
+                                
                                 <!-- Image upload options in grid -->
-                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer;" (click)="handleLabelClick($event)">
+                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                                    <!-- Mobile Upload Section - Positioned at top-right of upload item -->
+                                    @if(isRemoteUploadAvailable() && !isWaitingForMobileUpload && pendingFiles.length === 0){
+                                        <div class="mobile-upload-overlay-grid">
+                                            @if(isRemotePaired()){
+                                                <!-- Connected state -->
+                                                <div class="mobile-upload-actions">
+                                                    <button type="button" class="mobile-upload-btn connected compact" (click)="triggerMobileUpload(); $event.preventDefault()" title="Upload from Mobile">
+                                                        <mat-icon>smartphone</mat-icon>
+                                                        <span>Mobile Upload</span>
+                                                    </button>
+                                                    <button type="button" class="view-connection-btn compact" (click)="openViewConnectionDialog(); $event.preventDefault()" title="View Connection">
+                                                        <mat-icon>link</mat-icon>
+                                                    </button>
+                                                </div>
+                                            } @else {
+                                                <!-- Not connected -->
+                                                <div class="mobile-upload-actions">
+                                                    <button type="button" class="mobile-upload-btn compact" (click)="openRemoteUploadDialog(); $event.preventDefault()" title="Connect Mobile Device">
+                                                        <mat-icon>qr_code_scanner</mat-icon>
+                                                        <span>Connect Mobile</span>
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    
                                     @if(isWaitingForMobileUpload) {
                                         <!-- Waiting for mobile upload state -->
                                         <div class="mobile-waiting-state" (click)="$event.stopPropagation()">
@@ -127,27 +154,6 @@
                                         </div>
                                     } @else {
                                         <mat-icon class="active">upload_file</mat-icon>
-                                        <!-- Mobile Upload Buttons - Show when remote upload is available and connected -->
-                                        @if(isRemoteUploadAvailable() && isRemotePaired()){
-                                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                                <button type="button" class="mobile-upload-btn connected" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Upload from Mobile">
-                                                    <mat-icon>smartphone</mat-icon>
-                                                    <span>Upload from Mobile</span>
-                                                </button>
-                                                <button type="button" class="view-connection-btn" (click)="openViewConnectionDialog(); $event.stopPropagation(); $event.preventDefault()" title="View Connection">
-                                                    <mat-icon>link</mat-icon>
-                                                </button>
-                                            </div>
-                                        }
-                                        <!-- Show Connect button only when NOT connected -->
-                                        @else if(isRemoteUploadAvailable() && !isRemotePaired()){
-                                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                                <button type="button" class="mobile-upload-btn" (click)="openRemoteUploadDialog(); $event.stopPropagation(); $event.preventDefault()" title="Connect Mobile Device">
-                                                    <mat-icon>qr_code_scanner</mat-icon>
-                                                    <span>Connect Mobile</span>
-                                                </button>
-                                            </div>
-                                        }
                                     }
                                 </div>
                             </div>
@@ -156,49 +162,57 @@
                 </div>
             }
             @else if(!disabled){
-                <label style="display: flex; gap: 12px; flex-direction: column; justify-content: center; align-items: center; height: 100%; cursor: pointer;" (click)="handleLabelClick($event)">
-                    @if(isWaitingForMobileUpload) {
-                        <!-- Waiting for mobile upload state -->
-                        <div class="mobile-waiting-state" (click)="$event.stopPropagation()">
-                            <mat-progress-spinner diameter="32" mode="indeterminate"></mat-progress-spinner>
-                            <p style="text-align: center; font-size: 14px; margin: 8px 0 0 0;">Waiting for upload from mobile...</p>
-                            <small style="color: #666;">Please upload from your mobile device</small>
-                            <button type="button" class="cancel-mobile-btn-text" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()">
-                                Cancel
-                            </button>
-                        </div>
-                    } @else {
-                        <mat-icon>upload_file</mat-icon>
-                        <p style="text-align: center; font-size: 14px; margin: 0px;">
-                            {{label}}
-                            @if(hint && hint != ''){
-                                <br>
-                                <small>{{hint}}</small>
-                            }
-                        </p>
-                        <!-- Mobile Upload Buttons - Show when remote upload is available and connected -->
-                        @if(isRemoteUploadAvailable() && isRemotePaired()){
-                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                <button type="button" class="mobile-upload-btn connected" (click)="triggerMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Upload from Mobile">
-                                    <mat-icon>smartphone</mat-icon>
-                                    <span>Upload from Mobile</span>
-                                </button>
-                                <button type="button" class="view-connection-btn" (click)="openViewConnectionDialog(); $event.stopPropagation(); $event.preventDefault()" title="View Connection">
-                                    <mat-icon>link</mat-icon>
-                                </button>
+                <!-- Main File Upload Area with Mobile Upload Button -->
+                <div class="main-upload-wrapper">
+                    <div class="main-upload-label">
+                        <!-- Mobile Upload Section - Positioned at top with z-index -->
+                        @if(isRemoteUploadAvailable()){
+                            <div class="mobile-upload-overlay" (click)="$event.stopPropagation()">
+                                @if(isWaitingForMobileUpload) {
+                                    <!-- Waiting for mobile upload state -->
+                                    <div class="mobile-waiting-state">
+                                        <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
+                                        <span style="font-size: 14px; color: #666;">Waiting for upload from mobile...</span>
+                                        <button type="button" class="cancel-mobile-btn-text" (click)="cancelMobileUpload(); $event.preventDefault(); $event.stopPropagation()">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                } @else if(isRemotePaired()){
+                                    <!-- Connected state - show upload and view connection buttons -->
+                                    <div class="mobile-upload-actions">
+                                        <button type="button" class="mobile-upload-btn connected" (click)="triggerMobileUpload(); $event.preventDefault(); $event.stopPropagation()" title="Upload from Mobile">
+                                            <mat-icon>smartphone</mat-icon>
+                                            <span>Upload from Mobile</span>
+                                        </button>
+                                        <button type="button" class="view-connection-btn" (click)="openViewConnectionDialog(); $event.preventDefault(); $event.stopPropagation()" title="View Connection">
+                                            <mat-icon>link</mat-icon>
+                                        </button>
+                                    </div>
+                                } @else {
+                                    <!-- Not connected - show connect button -->
+                                    <div class="mobile-upload-actions">
+                                        <button type="button" class="mobile-upload-btn" (click)="openRemoteUploadDialog(); $event.preventDefault(); $event.stopPropagation()" title="Connect Mobile Device">
+                                            <mat-icon>qr_code_scanner</mat-icon>
+                                            <span>Connect Mobile</span>
+                                        </button>
+                                    </div>
+                                }
                             </div>
                         }
-                        <!-- Show Connect button only when NOT connected -->
-                        @else if(isRemoteUploadAvailable() && !isRemotePaired()){
-                            <div class="mobile-upload-actions" (click)="$event.stopPropagation()">
-                                <button type="button" class="mobile-upload-btn" (click)="openRemoteUploadDialog(); $event.stopPropagation(); $event.preventDefault()" title="Connect Mobile Device">
-                                    <mat-icon>qr_code_scanner</mat-icon>
-                                    <span>Connect Mobile</span>
-                                </button>
-                            </div>
-                        }
-                    }
-                </label>
+                        
+                        <!-- Upload Icon and Text - clickable area -->
+                        <label class="upload-content" [class.with-mobile]="isRemoteUploadAvailable()" style="cursor: pointer; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                            <mat-icon>upload_file</mat-icon>
+                            <p style="text-align: center; font-size: 14px; margin: 0px;">
+                                {{label}}
+                                @if(hint && hint != ''){
+                                    <br>
+                                    <small>{{hint}}</small>
+                                }
+                            </p>
+                        </label>
+                    </div>
+                </div>
             }
             @else{
                 <div class="not-found-section" style="display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; cursor: pointer;">
