@@ -630,6 +630,49 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     }, 500);
   }
 
+  /**
+   * Reset connection, clear all cached data, and open QR scanner
+   * Used when user wants to start fresh connection
+   */
+  async resetAndScan(): Promise<void> {
+    console.log('[UploadComponent] Reset and scan initiated');
+    
+    // Set disconnecting flag
+    this.isDisconnecting = true;
+    
+    // Clear all state immediately
+    this.isInitializing.set(false);
+    this.initError.set(null);
+    this.connectionStatus.set('disconnected');
+    this.mobileDeviceId.set('');
+    this.desktopDeviceId.set('');
+    this.apiUrl.set('');
+    this.uploadUrls.set(null);
+    this.desktopFieldInfo.set(null);
+    this.uploadedFiles.set([]);
+    this.devicesStatus.set(null);
+    this.isCheckingStatus.set(false);
+    this.isIntentionalDisconnect.set(true);
+    
+    // Disconnect socket and clear cache
+    try {
+      await this.socketService.disconnect();
+      console.log('[UploadComponent] Disconnected and cleared cache');
+    } catch (error) {
+      console.error('[UploadComponent] Reset disconnect error:', error);
+    }
+    
+    // Clear upload service
+    this.uploadService.clearUploads();
+    
+    // Reset disconnecting flag
+    this.isDisconnecting = false;
+    
+    // Open QR scanner
+    this.snackBar.open('Ready to scan new QR code', '', { duration: 2000 });
+    this.startScanning();
+  }
+
   // -------------------------------------------------------------------------
   // Utility Methods
   // -------------------------------------------------------------------------
