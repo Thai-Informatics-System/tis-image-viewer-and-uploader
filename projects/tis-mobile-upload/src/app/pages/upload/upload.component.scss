@@ -712,6 +712,29 @@
       }
     }
   }
+
+  .camera-switch-btn {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+    
+    mat-icon {
+      color: #1976d2;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 1);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
 }
 
 .scan-error {

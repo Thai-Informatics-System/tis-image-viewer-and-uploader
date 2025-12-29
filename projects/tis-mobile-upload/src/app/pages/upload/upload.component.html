@@ -70,6 +70,13 @@
               <div class="corner bottom-left"></div>
               <div class="corner bottom-right"></div>
             </div>
+            
+            <!-- Camera switch button -->
+            @if (hasMultipleCameras()) {
+              <button mat-fab class="camera-switch-btn" (click)="switchCamera()" matTooltip="Switch Camera">
+                <mat-icon>cameraswitch</mat-icon>
+              </button>
+            }
           </div>
 
           @if (scanError()) {
@@ -257,6 +264,13 @@
                   <div class="corner bottom-left"></div>
                   <div class="corner bottom-right"></div>
                 </div>
+                
+                <!-- Camera switch button -->
+                @if (hasMultipleCameras()) {
+                  <button mat-fab class="camera-switch-btn" (click)="switchCamera()" matTooltip="Switch Camera">
+                    <mat-icon>cameraswitch</mat-icon>
+                  </button>
+                }
               </div>
 
               @if (scanError()) {

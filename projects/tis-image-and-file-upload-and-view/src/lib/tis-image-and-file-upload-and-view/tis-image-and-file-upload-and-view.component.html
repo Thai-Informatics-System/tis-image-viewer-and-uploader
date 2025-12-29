@@ -87,7 +87,7 @@
                                     </div>
                                 }
                                 <!-- Image upload options in grid -->
-                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer;" (click)="handleLabelClick($event)">
                                     @if(isWaitingForMobileUpload) {
                                         <!-- Waiting for mobile upload state -->
                                         <div class="mobile-waiting-state" (click)="$event.stopPropagation()">
@@ -156,7 +156,7 @@
                 </div>
             }
             @else if(!disabled){
-                <label style="display: flex; gap: 12px; flex-direction: column; justify-content: center; align-items: center; height: 100%; cursor: pointer;" (click)="loading? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                <label style="display: flex; gap: 12px; flex-direction: column; justify-content: center; align-items: center; height: 100%; cursor: pointer;" (click)="handleLabelClick($event)">
                     @if(isWaitingForMobileUpload) {
                         <!-- Waiting for mobile upload state -->
                         <div class="mobile-waiting-state" (click)="$event.stopPropagation()">

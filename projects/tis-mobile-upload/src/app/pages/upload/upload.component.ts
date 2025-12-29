@@ -81,6 +81,10 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   // QR scanning state
   readonly isScanning = signal(false);
   readonly scanError = signal<string | null>(null);
+  
+  // Available camera devices
+  readonly availableCameras = signal<any[]>([]);
+  readonly hasMultipleCameras = computed(() => this.availableCameras().length > 1);
 
   // Device online status
   readonly devicesStatus = signal<DevicesOnlineStatus | null>(null);
@@ -167,15 +171,20 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
       setTimeout(() => {
         if (this.scanner && this.isScanning()) {
           console.log('[QR Scanner] Starting scanner...');
-          this.scanner.start().subscribe({
-            next: (result) => {
-              console.log('[QR Scanner] Scanner started:', result);
+          
+          // Subscribe to available devices
+          this.scanner.devices.subscribe({
+            next: (devices) => {
+              console.log('[QR Scanner] Available devices:', devices);
+              this.availableCameras.set(devices);
             },
             error: (error) => {
-              console.error('[QR Scanner] Failed to start:', error);
-              this.scanError.set('Failed to access camera. Please check permissions.');
+              console.error('[QR Scanner] Failed to get devices:', error);
             }
           });
+          
+          // Start scanner with back camera preference
+          this.startScannerWithBackCamera();
         }
       }, 100);
     }
@@ -672,6 +681,8 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.isScanning.set(true);
     // Reset intentional disconnect flag when user initiates new connection
     this.isIntentionalDisconnect.set(false);
+    // Reset available cameras
+    this.availableCameras.set([]);
     // Set pending flag - scanner will be started in ngAfterViewChecked
     // because the scanner component needs to be rendered first
     this.scannerStartPending = true;
@@ -680,9 +691,77 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
   stopScanning(): void {
     this.isScanning.set(false);
     this.scannerStartPending = false;
+    this.availableCameras.set([]);
     if (this.scanner) {
       this.scanner.stop().subscribe();
     }
+  }
+
+  /**
+   * Start scanner with preference for back/rear camera
+   */
+  private startScannerWithBackCamera(): void {
+    this.scanner.start().subscribe({
+      next: (result) => {
+        console.log('[QR Scanner] Scanner started:', result);
+        
+        // Try to switch to back camera if available
+        const devices = this.scanner.devices.value;
+        const backCamera = devices.find(device => 
+          /back|rear|environment/gi.test(device.label)
+        );
+        
+        if (backCamera) {
+          console.log('[QR Scanner] Switching to back camera:', backCamera.label);
+          this.switchCamera(backCamera.deviceId);
+        }
+      },
+      error: (error) => {
+        console.error('[QR Scanner] Failed to start:', error);
+        this.scanError.set('Failed to access camera. Please check permissions.');
+      }
+    });
+  }
+
+  /**
+   * Switch to a different camera device
+   */
+  switchCamera(deviceId?: string): void {
+    if (!this.scanner || !this.isScanning()) {
+      return;
+    }
+
+    let targetDeviceId: string;
+
+    // If no deviceId provided, switch to next available camera
+    if (!deviceId) {
+      const devices = this.availableCameras();
+      if (devices.length <= 1) {
+        return; // No other camera to switch to
+      }
+
+      const currentIndex = this.scanner.deviceIndexActive;
+      const nextIndex = (currentIndex + 1) % devices.length;
+      targetDeviceId = devices[nextIndex].deviceId;
+      
+      console.log('[QR Scanner] Switching from device', currentIndex, 'to', nextIndex);
+    } else {
+      targetDeviceId = deviceId;
+    }
+
+    this.scanner.playDevice(targetDeviceId).subscribe({
+      next: () => {
+        console.log('[QR Scanner] Switched to camera:', targetDeviceId);
+        const device = this.availableCameras().find(d => d.deviceId === targetDeviceId);
+        if (device) {
+          this.snackBar.open(`Switched to ${device.label}`, '', { duration: 2000 });
+        }
+      },
+      error: (error) => {
+        console.error('[QR Scanner] Failed to switch camera:', error);
+        this.scanError.set('Failed to switch camera. Please try again.');
+      }
+    });
   }
 
   onScanSuccess(results: ScannerQRCodeResult[]): void {

@@ -346,8 +346,34 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+      const fileMimeType = file.type.toLowerCase();
       
-      if (!acceptedTypes.includes(fileExtension)) {
+      let isValid = false;
+      
+      for (const acceptType of acceptedTypes) {
+        if (acceptType.startsWith('.')) {
+          // Extension match (e.g., .jpg, .png)
+          if (acceptType === fileExtension) {
+            isValid = true;
+            break;
+          }
+        } else if (acceptType.includes('/*')) {
+          // MIME type wildcard match (e.g., image/*, video/*)
+          const mimePrefix = acceptType.split('/')[0];
+          if (fileMimeType.startsWith(mimePrefix + '/')) {
+            isValid = true;
+            break;
+          }
+        } else if (acceptType.includes('/')) {
+          // Exact MIME type match (e.g., image/jpeg, application/pdf)
+          if (acceptType === fileMimeType) {
+            isValid = true;
+            break;
+          }
+        }
+      }
+      
+      if (!isValid) {
         invalidFiles.push(file.name);
       }
     }
@@ -371,6 +397,32 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     setTimeout(() => {
       this.isSliderLoaded = true;
     }, 20);
+  }
+
+  /**
+   * Handle click on the upload label - only trigger file selection if not clicking on mobile upload buttons
+   */
+  handleLabelClick(event: MouseEvent) {
+    if (this.loading) {
+      return;
+    }
+
+    // Check if the click is on or inside the mobile upload actions container or buttons
+    const target = event.target as HTMLElement;
+    const clickedOnMobileActions = target.closest('.mobile-upload-actions');
+    const clickedOnButton = target.closest('button');
+    
+    // If clicked on mobile upload actions or any button, don't trigger file selection
+    if (clickedOnMobileActions || clickedOnButton) {
+      return;
+    }
+
+    // Otherwise, proceed with normal file selection behavior
+    if (this.type === 'image' && this.isEnableCapture) {
+      this.openCameraCapture();
+    } else {
+      this.openImageSelector();
+    }
   }
 
   openImageSelector(selectorId: string = this.config?.selectorId) {
