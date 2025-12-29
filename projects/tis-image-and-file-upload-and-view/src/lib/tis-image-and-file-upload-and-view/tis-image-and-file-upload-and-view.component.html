@@ -95,18 +95,18 @@
                                             @if(isRemotePaired()){
                                                 <!-- Connected state -->
                                                 <div class="mobile-upload-actions">
-                                                    <button type="button" class="mobile-upload-btn connected compact" (click)="triggerMobileUpload(); $event.preventDefault()" title="Upload from Mobile">
+                                                    <button type="button" class="mobile-upload-btn connected compact" (click)="triggerMobileUpload(); $event.preventDefault(); $event.stopPropagation()" title="Upload from Mobile">
                                                         <mat-icon>smartphone</mat-icon>
                                                         <span>Mobile Upload</span>
                                                     </button>
-                                                    <button type="button" class="view-connection-btn compact" (click)="openViewConnectionDialog(); $event.preventDefault()" title="View Connection">
+                                                    <button type="button" class="view-connection-btn compact" (click)="openViewConnectionDialog(); $event.preventDefault(); $event.stopPropagation()" title="View Connection">
                                                         <mat-icon>link</mat-icon>
                                                     </button>
                                                 </div>
                                             } @else {
                                                 <!-- Not connected -->
                                                 <div class="mobile-upload-actions">
-                                                    <button type="button" class="mobile-upload-btn compact" (click)="openRemoteUploadDialog(); $event.preventDefault()" title="Connect Mobile Device">
+                                                    <button type="button" class="mobile-upload-btn compact" (click)="openRemoteUploadDialog(); $event.preventDefault(); $event.stopPropagation()" title="Connect Mobile Device">
                                                         <mat-icon>qr_code_scanner</mat-icon>
                                                         <span>Connect Mobile</span>
                                                     </button>

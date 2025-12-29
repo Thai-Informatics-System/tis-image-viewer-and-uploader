@@ -19,9 +19,9 @@ export class MockSocketAdapterService implements TisSocketAdapter, OnDestroy {
 
   // Cache for device ID (resolved once)
   private cachedDeviceId: string | null = null;
-  private cachedUserId: string = 'mock-user-123';
-  private cachedAccessToken: string = 'mock-access-token';
-  private cachedRefreshToken: string = 'mock-refresh-token';
+  private cachedUserId: string = '1188';
+  private cachedAccessToken: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjExODgiLCJvcmdJZCI6Ijg5IiwidGltZXpvbmUiOiJBc2lhL0Jhbmdrb2siLCJ0b2tlblR5cGUiOiJsb2dpbiIsInVzZXJUeXBlIjoiQkFDS0VORF9VU0VSIiwic2NvcGUiOiIqIiwiaWF0IjoxNzY2OTk1NTU1LCJleHAiOjE3NjcwMzg3NTV9.-xcSXjL79JcvdJOEuAvDXGu0G39fiqbpo67QNYj4wcU';
+  private cachedRefreshToken: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjExODgiLCJvcmdJZCI6Ijg5IiwidGltZXpvbmUiOiJBc2lhL0Jhbmdrb2siLCJ0b2tlblR5cGUiOiJyZWZyZXNoIiwidXNlclR5cGUiOiJCQUNLRU5EX1VTRVIiLCJzY29wZSI6IioiLCJpYXQiOjE3NjY5OTU1NTUsImV4cCI6MTc2OTU4NzU1NX0.A3X8a4LTuBmmwD7nagLrxFoNL2j2CM7VIz8oe6_EcyQ';
 
   // Map to track our channel subscriptions for cleanup
   private adapterChannels = new Map<string, Subject<any>>();
@@ -127,7 +127,7 @@ export class MockSocketAdapterService implements TisSocketAdapter, OnDestroy {
    * MOCK: Returns a mock API URL.
    */
   getApiUrl(): string {
-    return 'http://localhost:4200/api';
+    return 'http://localhost:3000/dev';
   }
 
   /**
@@ -135,7 +135,7 @@ export class MockSocketAdapterService implements TisSocketAdapter, OnDestroy {
    * MOCK: Returns a mock socket URL.
    */
   getSocketUrl(): string {
-    return 'ws://localhost:4200/socket';
+    return 'ws://localhost:3001/dev';
   }
 
   /**
