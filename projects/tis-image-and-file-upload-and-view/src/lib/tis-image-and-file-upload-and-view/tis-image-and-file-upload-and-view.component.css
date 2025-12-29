@@ -167,12 +167,13 @@
     border-radius: 4px;
     padding: 0;
     box-sizing: border-box;
-    /* height: 130px; */
+    height: var(--tis-image-picker-height, 130px);
 }
 
 .image-picker-label:has(.image-list) {
     border: 2px solid #e3e8ef;
     padding: 16px;
+    height: auto;
 }
 
 .image-picker-label.error {
@@ -224,6 +225,7 @@
 
 .image-list .image-item {
     aspect-ratio: 1;
+    height: var(--tis-image-picker-height, 130px);
     border-radius: 5px;
     background-position: center;
     background-size: cover;
