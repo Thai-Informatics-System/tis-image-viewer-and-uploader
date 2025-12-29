@@ -3,7 +3,6 @@
   <input 
     type="file" 
     #fileInput 
-    [accept]="acceptTypes()" 
     [attr.multiple]="desktopFieldInfo()?.isMultiple ? true : null"
     (change)="onFileSelected($event)" 
     style="display: none;" 

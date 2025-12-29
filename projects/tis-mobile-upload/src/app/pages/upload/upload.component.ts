@@ -401,6 +401,21 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     let files = Array.from(input.files);
     
+    // Validate file types against accept types
+    const acceptTypes = this.acceptTypes();
+    if (acceptTypes) {
+      const invalidFiles = files.filter(file => !this.isFileTypeAccepted(file, acceptTypes));
+      if (invalidFiles.length > 0) {
+        this.snackBar.open(
+          `Invalid file type(s). Accepted: ${acceptTypes}`, 
+          '', 
+          { duration: 4000 }
+        );
+        input.value = '';
+        return;
+      }
+    }
+    
     // Enforce limit if specified
     if (limit !== undefined && limit !== null) {
       const remaining = limit - currentCount;
@@ -636,6 +651,38 @@ export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   isImageFile(mimeType: string): boolean {
     return mimeType.startsWith('image/');
+  }
+
+  /**
+   * Validate if file type is accepted based on accept string
+   * Supports MIME types, wildcards (image/*, video/*), and extensions (.pdf, .jpg)
+   */
+  isFileTypeAccepted(file: File, acceptString: string): boolean {
+    if (!acceptString) return true;
+
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+    const acceptTypes = acceptString.toLowerCase().split(',').map(t => t.trim());
+
+    return acceptTypes.some(acceptType => {
+      // Handle wildcard MIME types (e.g., image/*, video/*)
+      if (acceptType.includes('/*')) {
+        const [category] = acceptType.split('/');
+        return mimeType.startsWith(category + '/');
+      }
+      
+      // Handle specific MIME types (e.g., image/jpeg, application/pdf)
+      if (acceptType.includes('/')) {
+        return mimeType === acceptType;
+      }
+      
+      // Handle file extensions (e.g., .pdf, .jpg)
+      if (acceptType.startsWith('.')) {
+        return fileName.endsWith(acceptType);
+      }
+      
+      return false;
+    });
   }
 
   /**
