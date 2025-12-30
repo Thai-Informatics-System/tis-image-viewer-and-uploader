@@ -12,3 +12,6 @@ export * from './lib/interfaces';
 // Remote Upload
 export * from './lib/services/tis-remote-upload.service';
 export * from './lib/tis-qr-code-dialog/tis-qr-code-dialog.component';
+
+// Camera Capture Dialog
+export * from './lib/tis-camera-capture-dialog/tis-camera-capture-dialog.component';

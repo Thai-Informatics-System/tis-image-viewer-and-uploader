@@ -9,6 +9,7 @@ import { TisHelperService } from '../services/tis-helper.service';
 import { TisConfirmationDialogComponent } from '../tis-confirmation-dialog/tis-confirmation-dialog.component';
 import { TisQrCodeDialogComponent, TisQrCodeDialogData } from '../tis-qr-code-dialog/tis-qr-code-dialog.component';
 import { TisViewConnectionDialogComponent } from '../tis-view-connection-dialog/tis-view-connection-dialog.component';
+import { TisCameraCaptureDialogComponent, CameraCaptureDialogData, CameraCaptureResult } from '../tis-camera-capture-dialog/tis-camera-capture-dialog.component';
 import { TisRemoteUploadService } from '../services/tis-remote-upload.service';
 import { Config } from '../interfaces/config.type';
 import { CdkDragDrop, CdkDragMove, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -185,31 +186,38 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   }
 
   ngAfterViewInit() {
-    this.isHandset$.subscribe(r => {
-      console.log('IS HANDSET:', r);
-      this.isMobile = r;
-      this.changeSubject.next(true);
-    });
-    this.isTab$.subscribe(r => {
-      console.log('IS TAB:', r);
-      this.isTab = r;
-      this.changeSubject.next(true);
-    });
+    this.isHandset$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(r => {
+        console.log('IS HANDSET:', r);
+        this.isMobile = r;
+        this.changeSubject.next(true);
+      });
+    
+    this.isTab$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(r => {
+        console.log('IS TAB:', r);
+        this.isTab = r;
+        this.changeSubject.next(true);
+      });
 
-    this.changeSubject.subscribe(status => {
-      let cols = 1;
-      if (this.isMobile) {
-        cols = this.options?.colsForMobile ?? 3;
-      }
-      else if (this.isTab) {
-        cols = this.options?.colsForTab ?? 4;
-      }
-      else {
-        cols = this.options?.cols ?? 5;
-      }
+    this.changeSubject
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(status => {
+        let cols = 1;
+        if (this.isMobile) {
+          cols = this.options?.colsForMobile ?? 3;
+        }
+        else if (this.isTab) {
+          cols = this.options?.colsForTab ?? 4;
+        }
+        else {
+          cols = this.options?.cols ?? 5;
+        }
 
-      this.config.cols = cols;
-    });
+        this.config.cols = cols;
+      });
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -232,15 +240,26 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     if (changes['data']) {
       const incomingData = changes['data']?.currentValue ?? [];
       
+      // Safety check: ensure filesArray is initialized
+      if (!this.filesArray) {
+        this.filesArray = [];
+      }
+      
       // Merge with existing, avoiding duplicates by s3Url
-      const existingUrls = new Set(this.filesArray.map((f: any) => f.s3Url));
-      const newFiles = incomingData.filter((f: any) => !existingUrls.has(f.s3Url));
+      const existingUrls = new Set(
+        this.filesArray
+          .filter((f: any) => f && f.s3Url) // Filter out null/undefined
+          .map((f: any) => f.s3Url)
+      );
+      const newFiles = incomingData.filter((f: any) => f && f.s3Url && !existingUrls.has(f.s3Url));
       
       // If new files exist or filesArray is empty, update with incoming data
       // If all incoming files already exist, keep the existing filesArray
       if (newFiles.length > 0 || this.filesArray.length === 0) {
         this.filesArray = incomingData.map((r: any) => {
-          r.loading = false;
+          if (r) {
+            r.loading = false;
+          }
           return r;
         });
         console.log("this.filesArray", this.filesArray);
@@ -484,498 +503,49 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   }
 
   private showCameraModal(stream: MediaStream, videoDevices?: MediaDeviceInfo[]) {
-    let currentStream = stream;
-    let currentDeviceIndex = 0;
-
-    // Create modal overlay with modern design
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 30, 0.95) 100%);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      padding: 20px;
-      box-sizing: border-box;
-      animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    `;
-
-    // Add modern animations and styles
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-      }
-      @keyframes glow {
-        0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
-        50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.7); }
-      }
-      .camera-loading {
-        animation: pulse 2s infinite;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Create main container with minimal glass effect
-    const mainContainer = document.createElement('div');
-    mainContainer.style.cssText = `
-      background: #1a1b1f;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: ${this.isMobile ? '16px' : '24px'};
-      height: auto;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    `;
-
-    // Create video container with clean styling
-    const videoContainer = document.createElement('div');
-    videoContainer.style.cssText = `
-      position: relative;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      flex: 1;
-      justify-content: center;
-    `;
-
-    // Create video element with clean styling
-    const video = document.createElement('video');
-    video.style.cssText = `
-      width: 100%;
-      max-width: 600px;
-      height: auto;
-      max-height: 70vh;
-      border-radius: 12px;
-      object-fit: cover;
-      background: #000;
-    `;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.srcObject = currentStream;
-
-    // Create canvas for capturing
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    // Create camera switch button with clean design (only if multiple cameras)
-    let switchCameraBtn: HTMLElement | null = null;
-    if (videoDevices && videoDevices.length > 1) {
-      switchCameraBtn = document.createElement('button');
-      switchCameraBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#e3e3e3"><g><rect fill="none" height="24" width="24"/></g><g><g><g><path d="M20,5h-3.17L15,3H9L7.17,5H4C2.9,5,2,5.9,2,7v12c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V7C22,5.9,21.1,5,20,5z M20,19H4V7 h3.17h0.88l0.59-0.65L9.88,5h4.24l1.24,1.35L15.95,7h0.88H20V19z"/></g><g><path d="M12,17c-2.21,0-4-1.79-4-4h2l-2.5-2.5L5,13h2c0,2.76,2.24,5,5,5c0.86,0,1.65-0.24,2.36-0.62l-0.74-0.74 C13.13,16.87,12.58,17,12,17z"/></g><g><path d="M12,8c-0.86,0-1.65,0.24-2.36,0.62l0.74,0.73C10.87,9.13,11.42,9,12,9c2.21,0,4,1.79,4,4h-2l2.5,2.5L19,13h-2 C17,10.24,14.76,8,12,8z"/></g></g></g></svg>
-      `;
-      switchCameraBtn.style.cssText = `
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border: none;
-        padding: ${this.isMobile ? '7px 7px' : '10px 10px'};
-        border-radius: 25px;
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        width: auto;
-        height: auto;
-        z-index: 10;
-      `;
-      
-      switchCameraBtn.addEventListener('mouseenter', () => {
-        switchCameraBtn!.style.background = 'rgba(0, 0, 0, 0.8)';
-        switchCameraBtn!.style.transform = 'scale(1.05)';
-      });
-      
-      switchCameraBtn.addEventListener('mouseleave', () => {
-        switchCameraBtn!.style.background = 'rgba(0, 0, 0, 0.6)';
-        switchCameraBtn!.style.transform = 'scale(1)';
-      });
-
-      videoContainer.appendChild(switchCameraBtn);
-    }
-
-    // // Create camera status indicator (cleaner design)
-    // const statusIndicator = document.createElement('div');
-    // statusIndicator.style.cssText = `
-    //   position: absolute;
-    //   top: 16px;
-    //   left: 16px;
-    //   background: rgba(244, 67, 54, 0.9);
-    //   color: white;
-    //   padding: 6px 12px;
-    //   border-radius: 12px;
-    //   font-size: 11px;
-    //   font-weight: 600;
-    //   display: flex;
-    //   align-items: center;
-    //   gap: 6px;
-    //   backdrop-filter: blur(10px);
-    //   -webkit-backdrop-filter: blur(10px);
-    //   z-index: 10;
-    // `;
-    
-    // const statusDot = document.createElement('div');
-    // statusDot.style.cssText = `
-    //   width: 6px;
-    //   height: 6px;
-    //   background: #fff;
-    //   border-radius: 50%;
-    //   animation: pulse 2s infinite;
-    // `;
-    
-    // statusIndicator.appendChild(statusDot);
-    // statusIndicator.appendChild(document.createTextNode('LIVE'));
-    // videoContainer.appendChild(statusIndicator);
-
-    // Create buttons container with clean layout
-    const buttonsDiv = document.createElement('div');
-    buttonsDiv.style.cssText = `
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      align-items: center;
-      padding: ${this.isMobile ? '10px' : '20px'};
-      padding-bottom: 0px;
-      background: transparent;
-      flex-wrap: wrap;
-    `;
-
-    // Create capture button with clean design
-    const captureBtn = document.createElement('button');
-    captureBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#e3e3e3">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h4.05l1.83-2h4.24l1.83 2H20v12zM12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/>
-      </svg>
-      ${this.isMobile ? '' : '&nbsp;Capture'}
-    `;
-    captureBtn.style.cssText = `
-      background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
-      color: white;
-      border: none;
-      padding: ${this.isMobile ? '12px' : '14px 20px'};
-      border-radius: 25px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      height: auto;
-      min-width: ${this.isMobile ? '50px': '100px'};
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 20px rgba(0, 122, 255, 0.4);
-    `;
-
-    captureBtn.addEventListener('mouseenter', () => {
-      captureBtn.style.transform = 'scale(1.05)';
-      captureBtn.style.boxShadow = '0 8px 25px rgba(0, 122, 255, 0.6)';
-    });
-    
-    captureBtn.addEventListener('mouseleave', () => {
-      captureBtn.style.transform = 'scale(1)';
-      captureBtn.style.boxShadow = '0 4px 20px rgba(0, 122, 255, 0.4)';
-    });
-
-    // Create library button with clean design
-    const libraryBtn = document.createElement('button');
-    libraryBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#e3e3e3">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M22 16V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2zm-11-4l2.03 2.71L16 11l4 5H8l3-4zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/>
-      </svg>
-      ${this.isMobile ? '' : '&nbsp;Upload'}
-    `;
-    libraryBtn.style.cssText = `
-      background: linear-gradient(135deg, #34C759 0%, #248A3D 100%);
-      color: white;
-      border: none;
-      padding: ${this.isMobile ? '12px' : '14px 20px'};
-      border-radius: 25px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      height: auto;
-      min-width: ${this.isMobile ? '50px': '100px'};
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      box-shadow: 0 4px 20px rgba(52, 199, 89, 0.4);
-    `;
-
-    libraryBtn.addEventListener('mouseenter', () => {
-      libraryBtn.style.transform = 'scale(1.05)';
-      libraryBtn.style.boxShadow = '0 8px 25px rgba(52, 199, 89, 0.6)';
-    });
-    
-    libraryBtn.addEventListener('mouseleave', () => {
-      libraryBtn.style.transform = 'scale(1)';
-      libraryBtn.style.boxShadow = '0 4px 20px rgba(52, 199, 89, 0.4)';
-    });
-
-    // Create cancel button with clean design
-    const cancelBtn = document.createElement('button');
-    cancelBtn.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#e3e3e3">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
-      </svg>
-      ${this.isMobile ? '' : '&nbsp;Cancel'}
-    `;
-    cancelBtn.style.cssText = `
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      padding: ${this.isMobile ? '12px' : '14px 20px'};
-      border-radius: 25px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      height: auto;
-      min-width: ${this.isMobile ? '50px': '100px'};
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    `;
-
-    cancelBtn.addEventListener('mouseenter', () => {
-      cancelBtn.style.background = 'rgba(255, 255, 255, 0.3)';
-      cancelBtn.style.transform = 'scale(1.05)';
-    });
-    
-    cancelBtn.addEventListener('mouseleave', () => {
-      cancelBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-      cancelBtn.style.transform = 'scale(1)';
-    });
-
-    // Add elements to modal with proper structure
-    videoContainer.appendChild(video);
-    buttonsDiv.appendChild(captureBtn);
-    buttonsDiv.appendChild(libraryBtn);
-    buttonsDiv.appendChild(cancelBtn);
-    mainContainer.appendChild(videoContainer);
-    mainContainer.appendChild(buttonsDiv);
-    modal.appendChild(mainContainer);
-    document.body.appendChild(modal);
-
-    // Handle camera switching with modern loading states
-    if (switchCameraBtn && videoDevices && videoDevices.length > 1) {
-      switchCameraBtn.addEventListener('click', async () => {
-        try {
-          // Show loading state
-          switchCameraBtn!.style.opacity = '0.7';
-          switchCameraBtn!.style.pointerEvents = 'none';
-          switchCameraBtn!.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="margin-right: 8px; animation: spin 1s linear infinite;">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" fill="none"/>
-            </svg>
-          `;
-          
-          // Add spin animation
-          const spinStyle = document.createElement('style');
-          spinStyle.textContent = `
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `;
-          if (!document.querySelector('[data-spin-style]')) {
-            spinStyle.setAttribute('data-spin-style', 'true');
-            document.head.appendChild(spinStyle);
-          }
-
-          // Stop current stream
-          currentStream.getTracks().forEach(track => track.stop());
-          
-          // Move to next camera
-          currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
-          
-          // Get new stream
-          const newStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              deviceId: videoDevices[currentDeviceIndex].deviceId,
-              width: { ideal: 1920 },
-              height: { ideal: 1080 }
-            }
-          });
-          
-          currentStream = newStream;
-          video.srcObject = newStream;
-
-          // Reset button state
-          setTimeout(() => {
-            switchCameraBtn!.style.opacity = '1';
-            switchCameraBtn!.style.pointerEvents = 'auto';
-            switchCameraBtn!.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#e3e3e3"><g><rect fill="none" height="24" width="24"/></g><g><g><g><path d="M20,5h-3.17L15,3H9L7.17,5H4C2.9,5,2,5.9,2,7v12c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V7C22,5.9,21.1,5,20,5z M20,19H4V7 h3.17h0.88l0.59-0.65L9.88,5h4.24l1.24,1.35L15.95,7h0.88H20V19z"/></g><g><path d="M12,17c-2.21,0-4-1.79-4-4h2l-2.5-2.5L5,13h2c0,2.76,2.24,5,5,5c0.86,0,1.65-0.24,2.36-0.62l-0.74-0.74 C13.13,16.87,12.58,17,12,17z"/></g><g><path d="M12,8c-0.86,0-1.65,0.24-2.36,0.62l0.74,0.73C10.87,9.13,11.42,9,12,9c2.21,0,4,1.79,4,4h-2l2.5,2.5L19,13h-2 C17,10.24,14.76,8,12,8z"/></g></g></g></svg>
-            `;
-          }, 500);
-        } catch (error) {
-          console.error('Error switching camera:', error);
-          this.helper.showErrorMsg('Failed to switch camera. Please try again.', 'Error', 3000);
-          
-          // Reset button on error
-          switchCameraBtn!.style.opacity = '1';
-          switchCameraBtn!.style.pointerEvents = 'auto';
-          switchCameraBtn!.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#e3e3e3"><g><rect fill="none" height="24" width="24"/></g><g><g><g><path d="M20,5h-3.17L15,3H9L7.17,5H4C2.9,5,2,5.9,2,7v12c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V7C22,5.9,21.1,5,20,5z M20,19H4V7 h3.17h0.88l0.59-0.65L9.88,5h4.24l1.24,1.35L15.95,7h0.88H20V19z"/></g><g><path d="M12,17c-2.21,0-4-1.79-4-4h2l-2.5-2.5L5,13h2c0,2.76,2.24,5,5,5c0.86,0,1.65-0.24,2.36-0.62l-0.74-0.74 C13.13,16.87,12.58,17,12,17z"/></g><g><path d="M12,8c-0.86,0-1.65,0.24-2.36,0.62l0.74,0.73C10.87,9.13,11.42,9,12,9c2.21,0,4,1.79,4,4h-2l2.5,2.5L19,13h-2 C17,10.24,14.76,8,12,8z"/></g></g></g></svg>
-          `;
-        }
-      });
-    }
-
-    // Handle library button click
-    libraryBtn.addEventListener('click', () => {
-      this.cleanupCameraModal(currentStream, modal);
-      this.openImageSelector();
-    });
-
-    // Handle capture with modern effects
-    captureBtn.addEventListener('click', () => {
-      // Create capture flash effect
-      const flashOverlay = document.createElement('div');
-      flashOverlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 16px;
-        animation: flash 0.3s ease-out;
-        pointer-events: none;
-        z-index: 10;
-      `;
-      
-      // Add flash animation
-      const flashStyle = document.createElement('style');
-      flashStyle.textContent = `
-        @keyframes flash {
-          0% { opacity: 0; }
-          50% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-      `;
-      if (!document.querySelector('[data-flash-style]')) {
-        flashStyle.setAttribute('data-flash-style', 'true');
-        document.head.appendChild(flashStyle);
-      }
-      
-      videoContainer.appendChild(flashOverlay);
-      
-      // Remove flash effect after animation
-      setTimeout(() => {
-        if (flashOverlay.parentNode) {
-          flashOverlay.parentNode.removeChild(flashOverlay);
-        }
-      }, 300);
-
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Draw video frame to canvas
-      ctx?.drawImage(video, 0, 0);
-      
-      // Close modal immediately after capture
-      this.cleanupCameraModal(currentStream, modal);
-      
-      // Convert canvas to blob
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          // Create a file from the blob
-          const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-
-          // Create a fake event to pass to detectImages
-          const fakeEvent = {
-            target: {
-              files: [file],
-              value: ''
-            },
-            preventDefault: () => {}
-          };
-
-          // Process the captured image
-          await this.detectImages(fakeEvent);
-        }
-      }, 'image/jpeg', 0.9);
-    });
-
-    // Handle cancel
-    cancelBtn.addEventListener('click', () => {
-      this.cleanupCameraModal(currentStream, modal);
-    });
-
-    // Handle ESC key
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        this.cleanupCameraModal(currentStream, modal);
-        document.removeEventListener('keydown', handleKeyPress);
-      }
+    const dialogData: CameraCaptureDialogData = {
+      stream,
+      videoDevices,
+      isMobile: this.isMobile
     };
-    document.addEventListener('keydown', handleKeyPress);
-  }
 
-  private cleanupCameraModal(stream: MediaStream, modal: HTMLElement) {
-    // Stop all video tracks
-    stream.getTracks().forEach(track => track.stop());
-    
-    // Remove modal from DOM
-    if (modal.parentNode) {
-      modal.parentNode.removeChild(modal);
-    }
+    const dialogRef = this.dialog.open(TisCameraCaptureDialogComponent, {
+      data: dialogData,
+      panelClass: 'camera-capture-dialog',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      width: '100%',
+      height: '100%',
+      hasBackdrop: true,
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe(async (result: CameraCaptureResult) => {
+      // Stop stream if dialog was closed
+      stream.getTracks().forEach(track => track.stop());
+
+      if (!result) {
+        return; // User closed dialog without action
+      }
+
+      if (result.action === 'capture' && result.file) {
+        // Create a fake event to pass to detectImages
+        const fakeEvent = {
+          target: {
+            files: [result.file],
+            value: ''
+          },
+          preventDefault: () => {}
+        };
+
+        // Process the captured image
+        await this.detectImages(fakeEvent);
+      } else if (result.action === 'upload') {
+        // Open file selector
+        this.openImageSelector();
+      }
+      // 'cancel' action - do nothing, just close
+    });
   }
 
   async detectImages(event: any, index: number = -1) {

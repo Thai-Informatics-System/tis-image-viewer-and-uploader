@@ -1,0 +1,73 @@
+<div class="camera-modal-overlay">
+  <div class="camera-modal-container">
+    <div class="video-container">
+      <!-- Video element -->
+      <video
+        #videoElement
+        autoplay
+        playsinline
+        class="camera-video">
+      </video>
+
+      <!-- Hidden canvas for capturing -->
+      <canvas #canvasElement style="display: none;"></canvas>
+
+      <!-- Flash overlay for capture effect -->
+      @if (showFlash()) {
+        <div class="flash-overlay"></div>
+      }
+
+      <!-- Camera switch button (only if multiple cameras) -->
+      @if (hasMultipleCameras) {
+        <button
+          mat-mini-fab
+          class="switch-camera-btn"
+          (click)="switchCamera()"
+          [disabled]="isSwitching()"
+          aria-label="Switch camera">
+          @if (isSwitching()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon>cameraswitch</mat-icon>
+          }
+        </button>
+      }
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-buttons">
+      <button
+        mat-raised-button
+        color="primary"
+        class="action-btn capture-btn"
+        (click)="capturePhoto()"
+        [disabled]="isCapturing()">
+        <mat-icon>photo_camera</mat-icon>
+        @if (!data.isMobile) {
+          <span>Capture</span>
+        }
+      </button>
+
+      <button
+        mat-raised-button
+        color="accent"
+        class="action-btn upload-btn"
+        (click)="openUpload()">
+        <mat-icon>photo_library</mat-icon>
+        @if (!data.isMobile) {
+          <span>Upload</span>
+        }
+      </button>
+
+      <button
+        mat-stroked-button
+        class="action-btn cancel-btn"
+        (click)="cancel()">
+        <mat-icon>close</mat-icon>
+        @if (!data.isMobile) {
+          <span>Cancel</span>
+        }
+      </button>
+    </div>
+  </div>
+</div>
