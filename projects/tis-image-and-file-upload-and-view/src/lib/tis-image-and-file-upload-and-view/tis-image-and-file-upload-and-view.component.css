@@ -644,7 +644,7 @@
     border-radius: 12px;
     padding: 24px;
     transition: all 0.3s ease;
-    height: calc(var(--tis-image-picker-height, 130px) + 40px);
+    height: calc(var(--tis-image-picker-height, 130px) + var(--tis-image-upload-config-height, 0px));
     box-sizing: border-box;
     position: relative;
     width: 100%;

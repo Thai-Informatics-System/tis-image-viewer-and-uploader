@@ -1,7 +1,7 @@
 @if (config) {
     <input type="file" size="60" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" [multiple]="config.isMultiple" style="display: none;" />
     @if(viewType == 'card'){
-        <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : (remoteUploadConfig?.enabled ? ('calc(' + config?.height  + ' + 40px)') : config?.height)" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" cdkDropListOrientation="horizontal">
+        <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : (remoteUploadConfig?.enabled ? ('calc(' + config?.height  + ' + 40px)') : config?.height)" style="--tis-image-picker-height: {{config?.height ?? 0}}; --tis-image-upload-config-height: {{remoteUploadConfig?.enabled ? '40px' : '0px'}}" cdkDropList (cdkDropListDropped)="drop($event)" cdkDropListOrientation="horizontal">
             @if(filesArray?.length){
                 <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
                     @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
