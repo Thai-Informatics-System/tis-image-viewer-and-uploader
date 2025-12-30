@@ -91,12 +91,12 @@
                                 <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
                                     @if(isWaitingForMobileUpload) {
                                         <!-- Waiting for mobile upload state -->
-                                        <div class="mobile-waiting-state hover-section" style="gap: 4px;" (click)="$event.stopPropagation()">
+                                        <div class="mobile-waiting-state hover-section" style="gap: 4px; padding: 0px;" (click)="$event.stopPropagation()">
                                             <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
                                             <span class="waiting-text" style="font-size: 10px; text-align: center;">Waiting for mobile...</span>
-                                            <div class="w-full h-full hover-section-overlay" style="top: 0; left: 0; background-color: #fafafa; display: flex; justify-content: center; align-items: center;">
+                                            <div class="w-full h-full absolute hover-section-overlay" style="top: 0; left: 0; background-color: #fafafa; display: flex; justify-content: center; align-items: center;">
                                                 <button type="button" class="cancel-mobile-btn" style="position: unset;" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Cancel">
-                                                    <mat-icon style="display: unset;">close</mat-icon>
+                                                    <mat-icon style="display: unset; color: var(--tis-cancel, #bb333b);">close</mat-icon>
                                                 </button>
                                             </div>
                                         </div>
