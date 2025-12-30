@@ -234,6 +234,7 @@
     justify-content: center;
     align-items: center;
     border: 1px solid rgba(0, 0, 0, 0.38);
+    width: 100%;
 }
 
 .image-list .image-item.uploader {
@@ -255,6 +256,7 @@
 
 .image-list .image-item.selected {
     border: 3px solid var(--tis-item-selected, var(--mat-sys-primary)) !important;
+    width: calc(100% - 4px);
 }
 
 .image-list .image-item .mat-icon {
@@ -500,7 +502,7 @@
 /* Mobile Upload Button Styles */
 .mobile-upload-overlay {
     position: absolute;
-    top: 0px;
+    top: 13px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
@@ -627,7 +629,7 @@
     border-radius: 12px;
     padding: 24px;
     transition: all 0.3s ease;
-    height: var(--tis-image-picker-height, 130px);
+    height: calc(var(--tis-image-picker-height, 130px) + 40px);
     box-sizing: border-box;
     position: relative;
     width: 100%;
@@ -650,7 +652,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 12px;
+    padding: 5px;
     background: white;
     color: var(--tis-primary, #1F6AAD);
     border: 2px solid var(--tis-primary, #1F6AAD);

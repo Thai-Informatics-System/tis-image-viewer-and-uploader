@@ -1,7 +1,7 @@
 @if (config) {
     <input type="file" size="60" id="{{config.selectorId}}" (change)="type == 'file'? detectFiles($event): detectImages($event)" accept="{{accept}}" [multiple]="config.isMultiple" style="display: none;" />
     @if(viewType == 'card'){
-        <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : config?.height" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" cdkDropListOrientation="horizontal">
+        <div [class.image-picker-label]="!previewOnly" [class.error]="required && (filesArray?.length || 0) <= 0" [style.height]="filesArray?.length ? null : (remoteUploadConfig?.enabled ? ('calc(' + config?.height  + ' + 40px)') : config?.height)" style="--tis-image-picker-height: {{config?.height ?? 0}}" cdkDropList (cdkDropListDropped)="drop($event)" cdkDropListOrientation="horizontal">
             @if(filesArray?.length){
                 <div [ngClass]="{'grid-cols-1': config?.cols == 1, 'grid-cols-2': config?.cols == 2, 'grid-cols-3': config?.cols == 3, 'grid-cols-4': config?.cols == 4, 'grid-cols-5': config?.cols == 5, 'grid-cols-6': config?.cols == 6}" class="{{previewInFlex ? 'flex' : 'grid'}} image-list" style="gap: 25px;">
                     @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
@@ -13,7 +13,7 @@
                                     </div>
                                 }
                                 <div cdkDrag (cdkDragStarted)="onDragStarted(i)" (cdkDragEnded)="onDragEnded()" (cdkDragMoved)="onDragMoved($event)">
-                                    <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" cdkDragHandle>
+                                    <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" cdkDragHandle>
                                         <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
                                         <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                         <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
@@ -54,7 +54,7 @@
                                         <div class="image-description-text" style="text-align: center; font-weight: bold;">Image {{i + 1}}</div>
                                     </div>
                                 }
-                                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)">
+                                <div class="image-item {{imageItemClass}}" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)">
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon-2x">description</mat-icon>
                                     <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                     <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>
@@ -88,7 +88,7 @@
                                 }
                                 
                                 <!-- Image upload options in grid -->
-                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i, -4)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
                                     <!-- Mobile Upload Section - Positioned at top-right of upload item -->
                                     @if(isRemoteUploadAvailable() && !isWaitingForMobileUpload && pendingFiles.length === 0){
                                         <div class="mobile-upload-overlay-grid">
@@ -237,7 +237,7 @@
                     @for(file of filesArray; track file.s3Url; let i = $index; let l = $last;){
                         @if(i == 0) {
                             <div>
-                                <div class="compact-image-item" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" [style.background-size]="'contain'">
+                                <div class="compact-image-item" [class.selected]="config?.selectionMode ? selectedId == file.id : false" [class.tis-curser-pointer]="!config?.hiddenPreview || config?.selectionMode" id="image-item-{{config.selectorId}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" [style.background-image]="type == 'file'? '' : 'url('+file.s3Url+')'" (click)="onSelectFile(file)" [style.background-size]="'contain'">
                                     <mat-icon *ngIf="type == 'file'" class="active tis-mat-icon">description</mat-icon>
                                     <span class="material-icons cancel" (click)="type == 'file'? deleteFile($event, {}, i, file) : deleteImage($event, {}, i, file)" *ngIf="(!disabled || showDeleteButtonWhenDisabled) && !config.hiddenDeleteBtn && !file?.loading">highlight_off</span>
                                     <span class="material-icons download" (click)="$event.stopPropagation(); downloadFile(file.s3Url, file.title)" *ngIf="!config.hiddenDownloadBtn && !file?.loading">download_for_offline</span>

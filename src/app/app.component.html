@@ -14,7 +14,7 @@
     <br><br>
 
     <h3 for="">Images with Card & Tags</h3>
-    <tis-image-and-file-upload-and-view [enableDragNDrop]="true" (dataSequenceChange)="dataSequenceChange($event)" type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
+    <tis-image-and-file-upload-and-view [enableDragNDrop]="false" (dataSequenceChange)="dataSequenceChange($event)" type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view-for-card-tags', limit: 10, enableImageTags: true, isMultiple: true, cols: 4})"
         accept=".png,.jpeg,.jpg" label="Click to upload">
     </tis-image-and-file-upload-and-view>
@@ -38,7 +38,7 @@
     <br><br>
 
     <h3 for="">Images with Card View</h3>
-    <tis-image-and-file-upload-and-view type="image" viewType="card" [enableDragNDrop]="true" (dataSequenceChange)="dataSequenceChange($event)" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
+    <tis-image-and-file-upload-and-view type="image" viewType="card" [enableDragNDrop]="false" (dataSequenceChange)="dataSequenceChange($event)" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view', selectionMode: true})" [selectedId]="selectedId"
         accept=".png,.jpeg,.jpg" label="Upload Image" [data]="images" [dialogConfig]="this.getImagePickerDialogConfig()" (onFileSelect)="onFileSelect($event)" [isEnableCapture]="true">
     </tis-image-and-file-upload-and-view>

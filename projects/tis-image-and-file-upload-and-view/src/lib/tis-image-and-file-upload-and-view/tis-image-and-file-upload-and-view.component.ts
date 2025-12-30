@@ -1230,6 +1230,12 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     }
   }
 
+  setHeight(id: string, valueForAddedHeight: number = 0): string {
+    let height = document.getElementById(id)?.offsetWidth;
+    // console.log("=== setHeight::height ===", id, height);
+    return `${(height ?? 0) + valueForAddedHeight}px`;
+  }
+
   generateFilesForSingleCard(){
     if(this.filesArray?.length < this.config.limit){
       for (let index = 0; index < (this.config.limit - this.filesArray?.length); index++) {
@@ -1609,7 +1615,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     };
 
     const dialogRef = this.dialog.open(TisQrCodeDialogComponent, {
-      width: this.isMobile ? '100%' : '420px',
+      width: this.isMobile ? '100%' : '470px',
       maxWidth: '100%',
       panelClass: ['tis-qr-code-dialog'],
       data: dialogData,

@@ -118,13 +118,13 @@
   </div>
 
   <!-- Footer -->
-  <div class="qr-dialog-footer">
-    <button mat-button *ngIf="!isConnected && !isLoading" (click)="connectToMobile()">
+  <div class="qr-dialog-footer" *ngIf="!isLoading">
+    <button mat-button style="width: 100%;" *ngIf="!isConnected" (click)="connectToMobile()">
       <mat-icon>qr_code</mat-icon>
       Regenerate QR Code
     </button>
-    <button mat-raised-button color="primary" (click)="close()">
-      {{ isConnected ? 'Done' : 'Close' }}
+    <button mat-raised-button style="width: 100%;" *ngIf="isConnected" color="primary" (click)="close()">
+      Done
     </button>
   </div>
 </div>

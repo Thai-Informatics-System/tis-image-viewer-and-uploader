@@ -1,8 +1,7 @@
 .qr-dialog-container {
   display: flex;
   flex-direction: column;
-  min-width: 360px;
-  max-width: 440px;
+  width: 100%;
   background: #ffffff;
   border-radius: 16px;
   overflow: hidden;
@@ -85,8 +84,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 10px;
   width: 100%;
+}
+
+.qr-section{
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Device Info Section */
@@ -597,6 +602,7 @@
   width: 28px;
   height: 28px;
   line-height: 28px;
+  padding: 2px;
 }
 
 .refresh-status-btn mat-icon {
@@ -612,4 +618,13 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.connected-indicator{
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  margin-left: -2px;
 }
