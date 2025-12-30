@@ -88,15 +88,17 @@
                                 }
                                 
                                 <!-- Image upload options in grid -->
-                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i, -4)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
                                     @if(isWaitingForMobileUpload) {
                                         <!-- Waiting for mobile upload state -->
-                                        <div class="mobile-waiting-state" (click)="$event.stopPropagation()">
-                                            <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
-                                            <span class="waiting-text">Waiting for mobile...</span>
-                                            <button type="button" class="cancel-mobile-btn" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Cancel">
-                                                <mat-icon>close</mat-icon>
-                                            </button>
+                                        <div class="mobile-waiting-state hover-section" style="gap: 4px;" (click)="$event.stopPropagation()">
+                                            <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+                                            <span class="waiting-text" style="font-size: 10px; text-align: center;">Waiting for mobile...</span>
+                                            <div class="w-full h-full hover-section-overlay" style="top: 0; left: 0; background-color: #fafafa; display: flex; justify-content: center; align-items: center;">
+                                                <button type="button" class="cancel-mobile-btn" style="position: unset;" (click)="cancelMobileUpload(); $event.stopPropagation(); $event.preventDefault()" title="Cancel">
+                                                    <mat-icon style="display: unset;">close</mat-icon>
+                                                </button>
+                                            </div>
                                         </div>
                                     } @else if(pendingFiles.length > 0) {
                                         <!-- Pending files from mobile - show accept/reject UI -->
@@ -132,14 +134,13 @@
                                 </div>
                             </div>
 
-                            <div class="flex flex-col" style="position: relative;">
-                                @if(isShowImageSequence){
-                                    <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
-                                    </div>
-                                }
+                            @if(isRemoteUploadAvailable() && !isWaitingForMobileUpload && pendingFiles.length === 0){
+                                <div class="flex flex-col" style="position: relative;">
+                                    @if(isShowImageSequence){
+                                        <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
+                                        </div>
+                                    }
                                 
-                                <!-- Image upload options in grid -->
-                                @if(isRemoteUploadAvailable() && !isWaitingForMobileUpload && pendingFiles.length === 0){
                                     <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative; border-width: 0px !important;">
                                         <!-- Mobile Upload Section - Positioned at top-right of upload item -->
                                         @if(isRemotePaired()){
@@ -159,7 +160,7 @@
                                                 </div>
                                             } @else {
                                                 <!-- Not connected -->
-                                                <div class="mobile-upload-actions">
+                                                <div class="mobile-upload-actions w-full h-full">
                                                     <button type="button" class="mobile-upload-btn compact" style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;" (click)="openRemoteUploadDialog(); $event.preventDefault(); $event.stopPropagation()" title="Connect Mobile Device">
                                                         <mat-icon style="display: unset !important;">qr_code_scanner</mat-icon>
                                                         <span style="font-weight: 500; font-size: 9px;">Connect Mobile</span>
@@ -168,8 +169,8 @@
                                             }
                                         </div>
                                     </div>
-                                }
-                            </div>
+                                </div>
+                            }
                         }
                     }
                 </div>

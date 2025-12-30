@@ -1,6 +1,17 @@
-.col-span-2 {
-    grid-column: span 2 / span 2;
+.hover-section{
+    --overlay-display: none;
+    position: relative;
 }
+
+.hover-section .hover-section-overlay{
+    display: var(--overlay-display);
+}
+
+.hover-section:hover {
+    --overlay-display: flex !important;
+}
+
+
 .cdk-drop-list-dragging {
     border: 2px solid red !important;
 }
