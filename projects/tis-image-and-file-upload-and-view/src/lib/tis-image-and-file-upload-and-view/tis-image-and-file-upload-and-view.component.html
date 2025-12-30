@@ -81,7 +81,7 @@
                             </div>
                         }
                         @if(l && (config?.limit || 0) > (filesArray?.length || 0) && !disabled){
-                            <div class="flex flex-col" [class.col-span-2]="remoteUploadConfig?.enabled" style="position: relative;">
+                            <div class="flex flex-col" style="position: relative;">
                                 @if(isShowImageSequence){
                                     <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
                                     </div>
@@ -132,7 +132,7 @@
                                 </div>
                             </div>
 
-                            <div class="flex flex-col" [class.col-span-2]="remoteUploadConfig?.enabled" style="position: relative;">
+                            <div class="flex flex-col" style="position: relative;">
                                 @if(isShowImageSequence){
                                     <div style="margin-top: .5rem; margin-bottom: 15px; height: 35px;">
                                     </div>
@@ -140,7 +140,7 @@
                                 
                                 <!-- Image upload options in grid -->
                                 @if(isRemoteUploadAvailable() && !isWaitingForMobileUpload && pendingFiles.length === 0){
-                                    <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i, -4)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative; border-width: 0px !important;">
+                                    <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative; border-width: 0px !important;">
                                         <!-- Mobile Upload Section - Positioned at top-right of upload item -->
                                         @if(isRemotePaired()){
                                             <span class="material-icons cancel" style="color: #4caf50;" (click)="openViewConnectionDialog(); $event.preventDefault(); $event.stopPropagation()" title="View Connection">link</span>
@@ -185,7 +185,7 @@
                                     <!-- Waiting for mobile upload state -->
                                     <div class="mobile-waiting-state">
                                         <mat-progress-spinner diameter="24" mode="indeterminate"></mat-progress-spinner>
-                                        <span style="font-size: 14px; color: #666;">Waiting for upload from mobile...</span>
+                                        <span style="font-size: 14px; color: #666; text-align: center;">Waiting for upload from mobile...</span>
                                         <button type="button" class="cancel-mobile-btn-text" (click)="cancelMobileUpload(); $event.preventDefault(); $event.stopPropagation()">
                                             Cancel
                                         </button>
