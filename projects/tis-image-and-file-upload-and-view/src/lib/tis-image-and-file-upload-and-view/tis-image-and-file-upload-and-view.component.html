@@ -129,7 +129,10 @@
                                             </div>
                                         </div>
                                     } @else{
-                                        <mat-icon class="active">upload_file</mat-icon>
+                                        <div class="w-full h-full" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center;">
+                                            <mat-icon class="active">upload_file</mat-icon>
+                                            <span style="font-weight: 500; font-size: 9px;">{{label}}</span>
+                                        </div>
                                     }
                                 </div>
                             </div>
