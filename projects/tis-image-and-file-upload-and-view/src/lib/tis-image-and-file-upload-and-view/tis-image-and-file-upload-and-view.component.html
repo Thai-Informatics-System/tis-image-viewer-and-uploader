@@ -88,7 +88,7 @@
                                 }
                                 
                                 <!-- Image upload options in grid -->
-                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
+                                <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i, -4)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative;" (click)="loading ? null : type == 'image' && isEnableCapture ? openCameraCapture() : openImageSelector()">
                                     @if(isWaitingForMobileUpload) {
                                         <!-- Waiting for mobile upload state -->
                                         <div class="mobile-waiting-state hover-section" style="gap: 4px; padding: 8px;" (click)="$event.stopPropagation()">
@@ -141,7 +141,7 @@
                                         </div>
                                     }
                                 
-                                    <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i+'-'+i+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative; border-width: 0px !important;">
+                                    <div class="image-item uploader" id="image-item-{{config.selectorId}}-{{i}}-{{i}}-{{i}}" [style.height]="setHeight('image-item-'+config.selectorId+'-'+i)" style="display: flex; flex-direction: column; gap: 8px; justify-content: center; align-items: center; cursor: pointer; position: relative; border-width: 0px !important;">
                                         <!-- Mobile Upload Section - Positioned at top-right of upload item -->
                                         @if(isRemotePaired()){
                                             <span class="material-icons cancel" style="color: #4caf50;" (click)="openViewConnectionDialog(); $event.preventDefault(); $event.stopPropagation()" title="View Connection">link</span>

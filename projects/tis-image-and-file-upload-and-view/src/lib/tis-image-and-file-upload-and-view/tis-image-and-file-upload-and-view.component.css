@@ -11,6 +11,14 @@
     --overlay-display: flex !important;
 }
 
+.w-full{
+    width: 100% !important;
+}
+
+.h-full{
+    height: 100% !important;
+}
+
 
 .cdk-drop-list-dragging {
     border: 2px solid red !important;
