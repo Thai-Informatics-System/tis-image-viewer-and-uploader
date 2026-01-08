@@ -34,8 +34,8 @@
                                                 <span>No Tags</span>
                                             }
                                         </div>
-                                        <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = true;" *ngIf="!file?.isEditMode && !disabled">edit</span>
-                                        <div class="image-description-edit" *ngIf="file?.isEditMode && (!disabled || editTagButtonWhenDisabled)">
+                                        <span class="material-icons edit-description-btn edit" style="font-size: 20px;" (click)="$event.stopPropagation(); file.tempTags = file.tags; file.isEditMode = true;" *ngIf="!file?.isEditMode && (editTagButtonWhenDisabled || !disabled)">edit</span>
+                                        <div class="image-description-edit" *ngIf="file?.isEditMode">
                                             <!-- (keydown)="onKeydown($event, file)" -->
                                             <input [(ngModel)]="file.tempTags" placeholder="Enter tags here..." (keydown.enter)="onSubmitTags(file)" (keydown.space)="editTagWithSpace(file)" />
                                             <div class="description-actions">
