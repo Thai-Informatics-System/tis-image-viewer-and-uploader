@@ -68,6 +68,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
 
   @Input() isShowImageSequence: boolean = false;
   @Input() enableDragNDrop: boolean = false;
+  @Input() editTagButtonWhenDisabled: boolean = false;
   @Input() showDeleteButtonWhenDisabled: boolean = false;
   @Output() dataSequenceChange = new EventEmitter<any>();
 
