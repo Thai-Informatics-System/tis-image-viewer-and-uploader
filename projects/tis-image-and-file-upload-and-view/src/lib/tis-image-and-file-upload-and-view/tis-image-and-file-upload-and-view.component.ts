@@ -629,9 +629,12 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
 
     return new Promise<void>((resolve) => {
       let reader = new FileReader();
-      reader.onload = async (e: any) => {
+      reader.onload = async (e: ProgressEvent<FileReader>) => {
         let mimeType = file.type;
-        let compressedImage = this.config?.isCompressed ? await this.helper.compressFile(e.target?.result, mimeType) : e.target.result;
+        // Compress image if configured, otherwise use original file
+        let fileToUpload: File | Blob = this.config?.isCompressed 
+          ? await this.helper.compressFile(file, mimeType) 
+          : file;
 
         try {
           let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
@@ -659,7 +662,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
           uploadedImages.push(currentImageData);
 
           // Upload to S3
-          await this.helper.putFile(uploadData.uploadURL, compressedImage).toPromise();
+          await this.helper.putFile(uploadData.uploadURL, fileToUpload, mimeType).toPromise();
 
           // After successful upload, update with S3 URL and mark as completed
           if(index !== -1 && this.filesArray[index]) {
@@ -681,7 +684,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
         }
       };
 
-      reader.readAsArrayBuffer(file);
+      reader.readAsDataURL(file);
     });
   }
 

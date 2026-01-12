@@ -13,6 +13,17 @@
     </tis-image-and-file-upload-and-view>
     <br><br>
 
+
+    <h3 for="">Compress Support</h3>
+    <tis-image-and-file-upload-and-view entityType="test_img_compress"
+        [urlConfig]="urlConfig"  [entityId]="entityId" [entityType]="entityType"
+        [options]="{selectorId: 'choosing-img-for-test_img_compress', height: '130px', isMultiple: true, limit: 3, cols: 5, isCompressed: true, hiddenDeleteBtn: false, hiddenPreview: false}"
+        label="Upload Image" hint="choose image and upload"
+        accept="image/*" [isEnableCapture]="true"
+        >
+    </tis-image-and-file-upload-and-view>
+    <br><br>
+
     <h3 for="">Images with Card & Tags</h3>
     <tis-image-and-file-upload-and-view [enableDragNDrop]="false" (dataSequenceChange)="dataSequenceChange($event)" type="image" viewType="card" [required]="false" [urlConfig]="urlConfig" [entityId]="entityId" [entityType]="entityType" [disabled]="false"
         [options]="getOptions({selectorId: 'choosing-image-for-image-details-card-view-for-card-tags', limit: 10, enableImageTags: true, isMultiple: true, cols: 4})"
