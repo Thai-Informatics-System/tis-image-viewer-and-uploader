@@ -3,5 +3,6 @@
   "dest": "../../dist/tis-image-and-file-upload-and-view",
   "lib": {
     "entryFile": "src/public-api.ts"
-  }
+  },
+  "allowedNonPeerDependencies": ["browser-image-compression"]
 }
