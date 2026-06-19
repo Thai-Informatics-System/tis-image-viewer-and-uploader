@@ -26,22 +26,38 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
           registry-url: 'https://registry.npmjs.org/'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --force
 
       - name: Bump version & inject
         env:
           BUMP: patch
+          LIB_NAME: ${{ env.LIB_NAME }}
         run: node scripts/bump-and-inject.mjs
+
+      - name: Verify version sync
+        run: |
+          ROOT_VERSION=$(node -p "require('./package.json').version")
+          LIB_VERSION=$(node -p "require('./projects/${{ env.LIB_NAME }}/package.json').version")
+
+          if [ "$ROOT_VERSION" != "$LIB_VERSION" ]; then
+            echo "❌ Version mismatch: root=$ROOT_VERSION, lib=$LIB_VERSION"
+            exit 1
+          fi
+
+          echo "✅ Versions synchronized: $ROOT_VERSION"
 
       - name: Commit version changes (skip CI)
         run: |
           if [[ -n "$(git status --porcelain)" ]]; then
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -am "chore: bump version & inject [skip ci]"
+            git add package.json projects/${{ env.LIB_NAME }}/package.json
+            git commit -m "chore: bump version for ${{ env.LIB_NAME }} [skip ci]"
+            git pull --rebase origin master
             git push
           fi
 
@@ -49,14 +65,24 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
-          # Only create tag if it doesn't exist
           if ! git rev-parse "$TAG" >/dev/null 2>&1; then
             git tag "$TAG"
             git push origin "$TAG"
+            echo "✅ Created and pushed tag: $TAG"
+          else
+            echo "⚪ Tag $TAG already exists, skipping"
           fi
 
       - name: Build library
         run: npm run build ${{ env.LIB_NAME }}
+
+      - name: Verify build output
+        run: |
+          if [ ! -f "./dist/${{ env.LIB_NAME }}/package.json" ]; then
+            echo "❌ Build failed — package.json not found in dist"
+            exit 1
+          fi
+          echo "✅ Build verification successful for ${{ env.LIB_NAME }}"
 
       - name: Publish to npm
         run: npm publish ./dist/${{ env.LIB_NAME }} --access public

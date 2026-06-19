@@ -1,6 +1,14 @@
 {
   "name": "@servicemind.tis/tis-image-and-file-upload-and-view",
   "version": "1.5.4",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Thai-Informatics-System/tis-image-viewer-and-uploader.git"
+  },
+  "homepage": "https://github.com/Thai-Informatics-System/tis-image-viewer-and-uploader#readme",
+  "bugs": {
+    "url": "https://github.com/Thai-Informatics-System/tis-image-viewer-and-uploader/issues"
+  },
   "peerDependencies": {
     "@angular/common": "^19.2.0",
     "@angular/core": "^19.2.0",
