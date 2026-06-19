@@ -956,3 +956,12 @@
     background: transparent !important;
     box-shadow: none !important;
 }
+
+/* Drag-and-drop file upload highlight */
+.image-picker-label.upload-drag-over,
+.image-picker-label-compact.upload-drag-over,
+.error-border.upload-drag-over {
+    outline: 2px dashed var(--tis-primary, #1F6AAD);
+    outline-offset: 2px;
+    background-color: rgba(31, 106, 173, 0.06);
+}

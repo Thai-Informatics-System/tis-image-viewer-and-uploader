@@ -55,6 +55,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   @Input() isEnableCapture: boolean = false;
   @Input() deleteConfirmationMsg!: string;
   @Input() dialogConfig!: DialogConfig;
+  @Input() enableDragNDropForUpload: boolean = false;
   
   // Remote Upload Configuration
   @Input() remoteUploadConfig: TisRemoteUploadConfig | null = null;
@@ -1325,10 +1326,81 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     });
   }
 
+  // Drag-and-drop upload state
+  isUploadDragOver = false;
+
   // Drag state for highlighting
   isDragging = false;
   dragSourceIndex: number | null = null;
   dropTargetIndex: number | null = null;
+
+  private canAcceptUploadDragDrop(): boolean {
+    if (!this.enableDragNDropForUpload || this.disabled || this.previewOnly || this.loading) {
+      return false;
+    }
+
+    return (this.config?.limit || 0) > (this.filesArray?.length || 0);
+  }
+
+  onUploadDragOver(event: DragEvent): void {
+    if (!this.canAcceptUploadDragDrop()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+
+    this.isUploadDragOver = true;
+  }
+
+  onUploadDragLeave(event: DragEvent): void {
+    if (!this.enableDragNDropForUpload) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const relatedTarget = event.relatedTarget as Node | null;
+    const currentTarget = event.currentTarget as Node;
+
+    if (relatedTarget && currentTarget.contains(relatedTarget)) {
+      return;
+    }
+
+    this.isUploadDragOver = false;
+  }
+
+  onUploadDrop(event: DragEvent): void {
+    if (!this.canAcceptUploadDragDrop()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.isUploadDragOver = false;
+
+    const files = event.dataTransfer?.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const syntheticEvent = {
+      preventDefault: () => {},
+      target: { files, value: '' }
+    };
+
+    if (this.type === 'file') {
+      this.detectFiles(syntheticEvent);
+    } else {
+      this.detectImages(syntheticEvent);
+    }
+  }
 
   onDragStarted(index: number) {
     this.isDragging = true;
