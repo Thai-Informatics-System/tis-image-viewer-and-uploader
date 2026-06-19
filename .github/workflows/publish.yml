@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write  # For committing and pushing tags
   packages: write  # For publishing to npm
+  id-token: write  # For npm OIDC trusted publishing
 
 jobs:
   bump-and-publish:
@@ -85,6 +86,6 @@ jobs:
           echo "✅ Build verification successful for ${{ env.LIB_NAME }}"
 
       - name: Publish to npm
-        run: npm publish ./dist/${{ env.LIB_NAME }} --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "registry=https://registry.npmjs.org/" > "$NPM_CONFIG_USERCONFIG"
+          npm publish ./dist/${{ env.LIB_NAME }} --access public --provenance
