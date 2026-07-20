@@ -628,65 +628,98 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
       return;
     }
 
-    return new Promise<void>((resolve) => {
-      let reader = new FileReader();
-      reader.onload = async (e: ProgressEvent<FileReader>) => {
-        let mimeType = file.type;
-        // Compress image if configured, otherwise use original file
-        let fileToUpload: File | Blob = this.config?.isCompressed 
-          ? await this.helper.compressFile(file, mimeType) 
-          : file;
+    // ponytail: iOS Safari often PUT 0-byte bodies if the original <input> File is
+    // uploaded after FileReader / async gaps. Snapshot bytes into a stable File first.
+    const mimeType = file.type || this.getMimeTypeFromFileName(file.name) || 'image/jpeg';
+    let fileBytes: ArrayBuffer;
+    try {
+      fileBytes = await file.arrayBuffer();
+    } catch (error: any) {
+      this.helper.showHttpErrorMsg(error);
+      return;
+    }
 
-        try {
-          let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, file.name, mimeType, this.currentEntityType).toPromise();
-          let uploadData = uploadResponse.data.uploadUrlData;
-          
-          // For initial display, use a data URL for preview but ensure S3 URL is used for database
-          let dataUrl = await this.helper.getDataUrlFromFile(file);
+    if (!fileBytes || fileBytes.byteLength === 0) {
+      this.helper.showErrorMsg('Unable to read image data. Please try again.', 'Error', 3000);
+      return;
+    }
 
-          let currentImageData = {
-            tempId: tempId || `temp-${Date.now()}`,
-            title: file.name, name: file.name, s3Url: dataUrl, // Temporary preview URL
-            filename: file.name, s3Path: uploadData.uploadPath,
-            tempS3Url: uploadData.resourceUrl, // This will be the final S3 URL
-            id: null,
-            uploadData: uploadData, loading: true,  // Set loading to true initially
-            tags: null, tempTags: null, isEditMode: false, sequence: 1,
-          };
+    const stableFile = new File([fileBytes], file.name || `image.${this.getExtensionFromMimeType(mimeType)}`, { type: mimeType });
+    let fileToUpload: File | Blob = this.config?.isCompressed
+      ? await this.helper.compressFile(stableFile, mimeType)
+      : stableFile;
 
-          // Update the file at the pre-assigned index
-          if(index !== -1 && this.filesArray[index]) {
-            this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
-          }
-          
-          this.setSliderLoading();
-          uploadedImages.push(currentImageData);
+    try {
+      let uploadResponse = await this.helper.getUploadUrl(this.urlConfig.getUploadUrl, stableFile.name, mimeType, this.currentEntityType).toPromise();
+      let uploadData = uploadResponse.data.uploadUrlData;
 
-          // Upload to S3
-          await this.helper.putFile(uploadData.uploadURL, fileToUpload, mimeType).toPromise();
+      // For initial display, use a data URL for preview but ensure S3 URL is used for database
+      let dataUrl = await this.helper.getDataUrlFromFile(stableFile);
 
-          // After successful upload, update with S3 URL and mark as completed
-          if(index !== -1 && this.filesArray[index]) {
-            this.filesArray[index].s3Url = uploadData.resourceUrl; // Use S3 URL
-            this.filesArray[index].loading = false;
-            // Ensure uploadData contains the correct S3 URL for database storage
-            this.filesArray[index].uploadData.resourceUrl = uploadData.resourceUrl;
-          }
-          this.setSliderLoading();
-
-          resolve();
-        } catch (error: any) {
-          // Set loading to false on error as well
-          if(index !== -1 && this.filesArray[index]) {
-            this.filesArray[index].loading = false;
-          }
-          this.helper.showHttpErrorMsg(error);
-          resolve();
-        }
+      let currentImageData = {
+        tempId: tempId || `temp-${Date.now()}`,
+        title: stableFile.name, name: stableFile.name, s3Url: dataUrl, // Temporary preview URL
+        filename: stableFile.name, s3Path: uploadData.uploadPath,
+        tempS3Url: uploadData.resourceUrl, // This will be the final S3 URL
+        id: null,
+        uploadData: uploadData, loading: true,  // Set loading to true initially
+        tags: null, tempTags: null, isEditMode: false, sequence: 1,
       };
 
-      reader.readAsDataURL(file);
-    });
+      // Update the file at the pre-assigned index
+      if(index !== -1 && this.filesArray[index]) {
+        this.filesArray[index] = {...this.filesArray[index], ...currentImageData};
+      }
+
+      this.setSliderLoading();
+      uploadedImages.push(currentImageData);
+
+      // Upload to S3 (stable Blob/File — not the original iOS File handle)
+      await this.helper.putFile(uploadData.uploadURL, fileToUpload, mimeType).toPromise();
+
+      // After successful upload, update with S3 URL and mark as completed
+      if(index !== -1 && this.filesArray[index]) {
+        this.filesArray[index].s3Url = uploadData.resourceUrl; // Use S3 URL
+        this.filesArray[index].loading = false;
+        // Ensure uploadData contains the correct S3 URL for database storage
+        this.filesArray[index].uploadData.resourceUrl = uploadData.resourceUrl;
+      }
+      this.setSliderLoading();
+    } catch (error: any) {
+      // Set loading to false on error as well
+      if(index !== -1 && this.filesArray[index]) {
+        this.filesArray[index].loading = false;
+      }
+      this.helper.showHttpErrorMsg(error);
+    }
+  }
+
+  private getMimeTypeFromFileName(fileName: string): string {
+    const ext = fileName?.split('.').pop()?.toLowerCase() || '';
+    const map: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      bmp: 'image/bmp',
+      heic: 'image/heic',
+      heif: 'image/heif',
+    };
+    return map[ext] || '';
+  }
+
+  private getExtensionFromMimeType(mimeType: string): string {
+    const map: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/bmp': 'bmp',
+      'image/heic': 'heic',
+      'image/heif': 'heif',
+    };
+    return map[mimeType.toLowerCase()] || 'jpg';
   }
 
   uploadImages(data: any) {
