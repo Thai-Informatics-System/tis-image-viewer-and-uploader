@@ -279,7 +279,27 @@ export class TisHelperService {
   }
 
   putFile(url: string, file: File | Blob | ArrayBuffer, contentType?: string): Observable<any> {
-    const headers = new HttpHeaders({ "content-type": contentType ? contentType : "binary/octet-stream"}).set('X-Skip-Auth-Interceptor', "");
+    const resolvedContentType = contentType || (file instanceof Blob ? file.type : '') || 'binary/octet-stream';
+    const byteLength = file instanceof ArrayBuffer
+      ? file.byteLength
+      : (file as Blob).size;
+    const fileName = file instanceof File ? file.name : '(blob/arraybuffer)';
+
+    // Debug: inspect payload before AWS PUT (do not put file bytes in headers —
+    // S3 signed URLs reject unsigned headers, and headers can't carry binary bodies).
+    console.log('[putFile] Uploading to AWS', {
+      url,
+      fileName,
+      contentType: resolvedContentType,
+      byteLength,
+      bodyType: file?.constructor?.name,
+      isEmpty: byteLength === 0,
+    });
+
+    const headers = new HttpHeaders({
+      'content-type': resolvedContentType,
+    }).set('X-Skip-Auth-Interceptor', '');
+
     return this.http.put(url, file, { headers });
   }
 
