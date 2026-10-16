@@ -9,6 +9,7 @@ export interface CameraCaptureDialogData {
   stream: MediaStream;
   videoDevices?: MediaDeviceInfo[];
   isMobile: boolean;
+  allowFileUpload?: boolean;
 }
 
 export interface CameraCaptureResult {

@@ -55,6 +55,7 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   @Input() isAddUploadedFileInLastNode: boolean = false;
   @Input() isEnableDeleteConfirmation: boolean = true;
   @Input() isEnableCapture: boolean = false;
+  @Input() disableFileUpload: boolean = false;
   @Input() deleteConfirmationMsg!: string;
   @Input() dialogConfig!: DialogConfig;
   @Input() enableDragNDropForUpload: boolean = false;
@@ -440,8 +441,15 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
       return;
     }
 
-    // Otherwise, proceed with normal file selection behavior
-    if (this.type === 'image' && this.isEnableCapture) {
+    this.onPickerClick();
+  }
+
+  onPickerClick() {
+    if (this.loading) {
+      return;
+    }
+
+    if (this.type === 'image' && (this.isEnableCapture || this.disableFileUpload)) {
       this.openCameraCapture();
     } else {
       this.openImageSelector();
@@ -449,20 +457,30 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
   }
 
   openImageSelector(selectorId: string = this.config?.selectorId) {
+    if (this.type === 'image' && this.disableFileUpload) {
+      return;
+    }
     document.getElementById(selectorId)?.click();
   }
 
   async openCameraCapture() {
+    const cameraOnly = this.type === 'image' && this.disableFileUpload;
+
     // Check configuration preference and browser support
     if (this.config.useAdvancedCamera && typeof navigator !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       try {
         // Try to open camera directly using MediaDevices API
         await this.openCameraDialog();
       } catch (error) {
+        if (cameraOnly) {
+          return;
+        }
         console.log('MediaDevices API failed, falling back to file input:', error);
         // Fallback to file input method
         this.openImageSelector();
       }
+    } else if (cameraOnly) {
+      this.helper.showErrorMsg('Could not access camera.', 'Error', 3000);
     } else {
       // Use simple file input method (works on most browsers including mobile)
       this.openImageSelector();
@@ -493,14 +511,17 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
 
     } catch (error: any) {
       console.error('Error accessing camera:', error);
+      const cameraOnly = this.type === 'image' && this.disableFileUpload;
       
       if (error.name === 'NotAllowedError') {
         this.helper.showErrorMsg('Camera access denied. Please allow camera access and try again.', 'Error', 3000);
       } else if (error.name === 'NotFoundError') {
-        this.helper.showErrorMsg('No camera found. Please use file upload instead.', 'Error', 3000);
+        this.helper.showErrorMsg(cameraOnly ? 'No camera found.' : 'No camera found. Please use file upload instead.', 'Error', 3000);
       } else {
-        this.helper.showErrorMsg('Could not access camera. Falling back to file upload.', 'Error', 3000);
-        this.openImageSelector();
+        this.helper.showErrorMsg(cameraOnly ? 'Could not access camera.' : 'Could not access camera. Falling back to file upload.', 'Error', 3000);
+        if (!cameraOnly) {
+          this.openImageSelector();
+        }
       }
       throw error;
     }
@@ -510,7 +531,8 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
     const dialogData: CameraCaptureDialogData = {
       stream,
       videoDevices,
-      isMobile: this.isMobile
+      isMobile: this.isMobile,
+      allowFileUpload: !this.disableFileUpload
     };
 
     const dialogRef = this.dialog.open(TisCameraCaptureDialogComponent, {
@@ -1371,6 +1393,10 @@ export class TisImageAndFileUploadAndViewComponent implements OnDestroy {
 
   private canAcceptUploadDragDrop(): boolean {
     if (!this.enableDragNDropForUpload || this.disabled || this.previewOnly || this.loading) {
+      return false;
+    }
+
+    if (this.type === 'image' && this.disableFileUpload) {
       return false;
     }
 

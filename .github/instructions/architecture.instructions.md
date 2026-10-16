@@ -962,6 +962,9 @@ npm publish
 @Input() isEnableCapture: boolean = false;
 // Enable camera capture for images (mobile)
 
+@Input() disableFileUpload: boolean = false;
+// Block the file picker, camera Upload button, and drag-and-drop file drops for images. Camera capture and QR / Upload from Mobile stay available.
+
 @Input() isShowImageSequence: boolean = false;
 // Show sequence numbers on images
 

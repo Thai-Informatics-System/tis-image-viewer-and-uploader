@@ -14,6 +14,16 @@
     </tis-image-and-file-upload-and-view>
     <br><br>
 
+    <h3 for="">Camera only</h3>
+    <tis-image-and-file-upload-and-view entityType="parcel_create"
+        [urlConfig]="urlConfig"  [entityId]="entityId" [entityType]="entityType"
+        [options]="{selectorId: 'choosing-img-for-camera-only', height: '130px', isMultiple: true, limit: 3, cols: 5, isCompressed: false, hiddenDeleteBtn: false, hiddenPreview: false}"
+        label="Capture Image" hint="camera capture only"
+        accept="image/*" [isEnableCapture]="true" [disableFileUpload]="true"
+        [enableDragNDropForUpload]="true"
+    >
+    </tis-image-and-file-upload-and-view>
+    <br><br>
 
     <h3 for="">Compress Support</h3>
     <tis-image-and-file-upload-and-view entityType="test_img_compress"

@@ -48,16 +48,18 @@
         }
       </button>
 
-      <button
-        mat-raised-button
-        color="accent"
-        class="action-btn upload-btn"
-        (click)="openUpload()">
-        <mat-icon>photo_library</mat-icon>
-        @if (!data.isMobile) {
-          <span>Upload</span>
-        }
-      </button>
+      @if (data.allowFileUpload !== false) {
+        <button
+          mat-raised-button
+          color="accent"
+          class="action-btn upload-btn"
+          (click)="openUpload()">
+          <mat-icon>photo_library</mat-icon>
+          @if (!data.isMobile) {
+            <span>Upload</span>
+          }
+        </button>
+      }
 
       <button
         mat-stroked-button
