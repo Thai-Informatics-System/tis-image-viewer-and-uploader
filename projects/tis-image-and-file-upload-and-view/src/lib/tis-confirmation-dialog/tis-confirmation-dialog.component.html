@@ -1,18 +1,22 @@
 <h1 mat-dialog-title style="align-items: center; display: flex;">
-    <mat-icon class="{{data?.iconClass}}" style="color: var(--tis-cancel, #bb333b)">{{data?.icon}}</mat-icon>
-    <span>{{data?.title}}</span>
+  <mat-icon class="{{data?.iconClass}}" style="color: var(--tis-cancel, var(--mat-sys-error, #bb333b))">{{data?.icon}}</mat-icon>
+  <span>{{data?.title}}</span>
 </h1>
 <div mat-dialog-content style="padding: 20px 24px; padding-top: 0px;">
-    @if(data?.html){
-        <h5 class="title">{{data?.message}}</h5>
-        <div [innerHTML]="data.html">
-        </div>
-    }
-    @else {
-        <span>{{data?.message}}</span>
-    }
+  @if(data?.html){
+    <h5 class="title">{{data?.message}}</h5>
+    <div [innerHTML]="data.html">
+    </div>
+  }
+  @else {
+  <span>{{data?.message}}</span>
+}
 </div>
 <div mat-dialog-actions>
-    <button mat-button class="{{data?.cancelButtonClass}}" style="color: var(--tis-primary, var(--mat-sys-primary))" (click)="onClose(false)" *ngIf="data?.cancelButtonText && data?.cancelButtonText != ''">{{data?.cancelButtonText}}</button>
-    <button mat-button class="{{data?.approveButtonClass}}" style="color: var(--tis-cancel, #bb333b)" (click)="onClose(true)" cdkFocusInitial *ngIf="data?.approveButtonText && data?.approveButtonText != ''">{{data?.approveButtonText}}</button>
+  @if (data?.cancelButtonText && data?.cancelButtonText != '') {
+    <button mat-button class="{{data?.cancelButtonClass}}" style="color: var(--tis-primary, var(--mat-sys-primary))" (click)="onClose(false)">{{data?.cancelButtonText}}</button>
+  }
+  @if (data?.approveButtonText && data?.approveButtonText != '') {
+    <button mat-button class="{{data?.approveButtonClass}}" style="color: var(--tis-cancel, var(--mat-sys-error, #bb333b))" (click)="onClose(true)" cdkFocusInitial>{{data?.approveButtonText}}</button>
+  }
 </div>

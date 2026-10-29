@@ -19,7 +19,7 @@
   }
   
   ::ng-deep .tis-extended-pdf-viewer .zoom pdf-toolbar .toolbar #toolbarContainer {
-    background-color: var(--tis-primary) !important;
+    background-color: var(--tis-primary, var(--mat-sys-primary, #1F6AAD)) !important;
   }
   
   ::ng-deep .tis-extended-pdf-viewer .zoom pdf-toolbar .toolbar #toolbarContainer #toolbarViewer #toolbarViewerLeft pdf-toggle-sidebar pdf-shy-button .toolbarButton,

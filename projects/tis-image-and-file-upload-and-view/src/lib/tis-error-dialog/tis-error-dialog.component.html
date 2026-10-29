@@ -1,10 +1,12 @@
 <h1 mat-dialog-title>
-    <mat-icon class="{{data?.iconClass}}">{{data?.icon}}</mat-icon>
-    {{data?.title}}
+  <mat-icon class="{{data?.iconClass}}">{{data?.icon}}</mat-icon>
+  {{data?.title}}
 </h1>
 <div mat-dialog-content>
-    {{data?.message}}
+  {{data?.message}}
 </div>
 <div mat-dialog-actions>
-  <button mat-button class="tis-text-upper {{data?.buttonClass ?? 'tis-btn-primary'}}" (click)="onClose()" cdkFocusInitial *ngIf="data?.buttonText && data?.buttonText != ''">{{data?.buttonText}}</button>
+  @if (data?.buttonText && data?.buttonText != '') {
+    <button mat-button class="tis-text-upper {{data?.buttonClass ?? 'tis-btn-primary'}}" (click)="onClose()" cdkFocusInitial>{{data?.buttonText}}</button>
+  }
 </div>

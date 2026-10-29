@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, inject, effect, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, effect, ViewChild, ElementRef, AfterViewChecked, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient, HttpEventType } from '@angular/common/http';
@@ -26,6 +26,7 @@ import { MobileUploadService } from '../../services/mobile-upload.service';
     NgxScannerQrcodeComponent
   ],
   templateUrl: './upload.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./upload.component.scss']
 })
 export class UploadComponent implements OnInit, OnDestroy, AfterViewChecked {

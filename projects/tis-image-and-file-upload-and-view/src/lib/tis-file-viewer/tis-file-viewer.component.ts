@@ -1,4 +1,4 @@
-import { Component, Inject, ViewChild } from '@angular/core';
+import { Component, Inject, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { DomSanitizer } from '@angular/platform-browser';
 import type { FileViewerDialogData } from '../interfaces';
@@ -8,6 +8,7 @@ import { TisPdfViewerComponent } from './tis-pdf-viewer/tis-pdf-viewer.component
   selector: 'tis-file-viewer',
   standalone: false,
   templateUrl: './tis-file-viewer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-file-viewer.component.css'
 })
 export class TisFileViewerComponent {

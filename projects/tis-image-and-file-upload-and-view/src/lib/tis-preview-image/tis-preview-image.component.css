@@ -23,7 +23,7 @@
 }
 
 .close-icon {
-    color: var(--tis-cancel, #bb333b);
+    color: var(--tis-cancel, var(--mat-sys-error, #bb333b));
     position: absolute;
     top: 10px;
     right: 10px;

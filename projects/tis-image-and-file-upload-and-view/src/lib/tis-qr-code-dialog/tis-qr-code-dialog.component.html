@@ -11,120 +11,145 @@
   <!-- Content -->
   <div class="qr-dialog-content">
     <!-- Loading State -->
-    <div *ngIf="isLoading" class="loading-container">
-      <mat-spinner diameter="48"></mat-spinner>
-      <p>Generating QR Code...</p>
-    </div>
+    @if (isLoading) {
+      <div class="loading-container">
+        <mat-spinner diameter="48"></mat-spinner>
+        <p>Generating QR Code...</p>
+      </div>
+    }
 
     <!-- Error State -->
-    <div *ngIf="errorMessage && !isLoading" class="error-container">
-      <mat-icon class="error-icon">error_outline</mat-icon>
-      <p class="error-message">{{ errorMessage }}</p>
-      <button mat-raised-button color="primary" (click)="refreshQrCode()">
-        Try Again
-      </button>
-    </div>
-
-    <!-- Main Content -->
-    <div *ngIf="!isLoading && !errorMessage" class="qr-content">
-      
-      <!-- Device Info Card -->
-      <div class="device-info-card">
-        <div class="device-row">
-          <div class="device-status-dot" [ngClass]="getDesktopStatusClass()"></div>
-          <mat-icon class="device-icon desktop">computer</mat-icon>
-          <div class="device-details">
-            <span class="device-label">THIS DEVICE</span>
-            <span class="device-id" [title]="desktopDeviceId">{{ formatDeviceId(desktopDeviceId) }}</span>
-          </div>
-        </div>
-        
-        <div class="connection-line" *ngIf="mobileDeviceId">
-          <mat-icon>sync_alt</mat-icon>
-        </div>
-        
-        <div class="device-row" *ngIf="mobileDeviceId">
-          <div class="device-status-dot" [ngClass]="getMobileStatusClass()"></div>
-          <mat-icon class="device-icon mobile">smartphone</mat-icon>
-          <div class="device-details">
-            <span class="device-label">CONNECTED MOBILE</span>
-            <span class="device-id" [title]="mobileDeviceId">{{ formatDeviceId(mobileDeviceId) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Transfer Status -->
-      <div *ngIf="isConnected && devicesStatus" class="transfer-status" [ngClass]="{'ready': isReadyForTransfer(), 'not-ready': !isReadyForTransfer()}">
-        <mat-icon>{{ isReadyForTransfer() ? 'check_circle' : 'warning' }}</mat-icon>
-        <span *ngIf="isReadyForTransfer()">Ready for transfer</span>
-        <span *ngIf="!isReadyForTransfer()">
-          {{ !devicesStatus.mobile?.isOnline ? 'Mobile device is offline' : 'Desktop device is offline' }}
-        </span>
-        <button mat-icon-button class="refresh-status-btn" (click)="refreshStatus()" [disabled]="isCheckingStatus" title="Refresh status">
-          <mat-icon [class.spinning]="isCheckingStatus">refresh</mat-icon>
+    @if (errorMessage && !isLoading) {
+      <div class="error-container">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+        <p class="error-message">{{ errorMessage }}</p>
+        <button mat-raised-button color="primary" (click)="refreshQrCode()">
+          Try Again
         </button>
       </div>
+    }
 
-      <!-- Connected State -->
-      <div *ngIf="isConnected" class="connected-state">
-        <div class="connected-indicator">
-          <mat-icon class="success-icon">check_circle</mat-icon>
-          <span>Mobile Connected!</span>
+    <!-- Main Content -->
+    @if (!isLoading && !errorMessage) {
+      <div class="qr-content">
+        <!-- Device Info Card -->
+        <div class="device-info-card">
+          <div class="device-row">
+            <div class="device-status-dot" [ngClass]="getDesktopStatusClass()"></div>
+            <mat-icon class="device-icon desktop">computer</mat-icon>
+            <div class="device-details">
+              <span class="device-label">THIS DEVICE</span>
+              <span class="device-id" [title]="desktopDeviceId">{{ formatDeviceId(desktopDeviceId) }}</span>
+            </div>
+          </div>
+          @if (mobileDeviceId) {
+            <div class="connection-line">
+              <mat-icon>sync_alt</mat-icon>
+            </div>
+          }
+          @if (mobileDeviceId) {
+            <div class="device-row">
+              <div class="device-status-dot" [ngClass]="getMobileStatusClass()"></div>
+              <mat-icon class="device-icon mobile">smartphone</mat-icon>
+              <div class="device-details">
+                <span class="device-label">CONNECTED MOBILE</span>
+                <span class="device-id" [title]="mobileDeviceId">{{ formatDeviceId(mobileDeviceId) }}</span>
+              </div>
+            </div>
+          }
         </div>
-        <p class="connected-message">
-          Your mobile device is now paired with this desktop. Click <strong>"Done"</strong> below to close this dialog, 
-          then click <strong>"Upload from Mobile"</strong> whenever you want to upload files.
-        </p>
-      </div>
-
-      <!-- QR Code (only show when not connected) -->
-      <div *ngIf="!isConnected" class="qr-section">
-        <!-- Connection Status -->
-        <div class="connection-status" [ngClass]="connectionStatus">
-          <div class="status-indicator"></div>
-          <span *ngIf="connectionStatus === 'disconnected'">Waiting for mobile...</span>
-          <span *ngIf="connectionStatus === 'pending'">Waiting for connection...</span>
-        </div>
-
-        <!-- QR Code -->
-        <div class="qr-code-wrapper" [class.expired]="isExpired">
-          <qrcode 
-            *ngIf="qrData"
-            [qrdata]="qrData" 
-            [width]="data.qrSize || 200" 
-            [errorCorrectionLevel]="'M'"
-            [elementType]="'canvas'"
-            [cssClass]="'qr-canvas'"
-          ></qrcode>
-          
-          <!-- Expired Overlay -->
-          <div *ngIf="isExpired" class="expired-overlay">
-            <mat-icon>refresh</mat-icon>
-            <p>QR Code Expired</p>
-            <button mat-raised-button color="primary" (click)="refreshQrCode()">
-              Generate New Code
+        <!-- Transfer Status -->
+        @if (isConnected && devicesStatus) {
+          <div class="transfer-status" [ngClass]="{'ready': isReadyForTransfer(), 'not-ready': !isReadyForTransfer()}">
+            <mat-icon>{{ isReadyForTransfer() ? 'check_circle' : 'warning' }}</mat-icon>
+            @if (isReadyForTransfer()) {
+              <span>Ready for transfer</span>
+            }
+            @if (!isReadyForTransfer()) {
+              <span>
+                {{ !devicesStatus.mobile?.isOnline ? 'Mobile device is offline' : 'Desktop device is offline' }}
+              </span>
+            }
+            <button mat-icon-button class="refresh-status-btn" (click)="refreshStatus()" [disabled]="isCheckingStatus" title="Refresh status">
+              <mat-icon [class.spinning]="isCheckingStatus">refresh</mat-icon>
             </button>
           </div>
-        </div>
-
-        <!-- Countdown Timer -->
-        <div class="countdown" *ngIf="data.showCountdown !== false && !isExpired">
-          <mat-icon>timer</mat-icon>
-          <span>Expires in {{ remainingTime }}</span>
-        </div>
+        }
+        <!-- Connected State -->
+        @if (isConnected) {
+          <div class="connected-state">
+            <div class="connected-indicator">
+              <mat-icon class="success-icon">check_circle</mat-icon>
+              <span>Mobile Connected!</span>
+            </div>
+            <p class="connected-message">
+              Your mobile device is now paired with this desktop. Click <strong>"Done"</strong> below to close this dialog,
+              then click <strong>"Upload from Mobile"</strong> whenever you want to upload files.
+            </p>
+          </div>
+        }
+        <!-- QR Code (only show when not connected) -->
+        @if (!isConnected) {
+          <div class="qr-section">
+            <!-- Connection Status -->
+            <div class="connection-status" [ngClass]="connectionStatus">
+              <div class="status-indicator"></div>
+              @if (connectionStatus === 'disconnected') {
+                <span>Waiting for mobile...</span>
+              }
+              @if (connectionStatus === 'pending') {
+                <span>Waiting for connection...</span>
+              }
+            </div>
+            <!-- QR Code -->
+            <div class="qr-code-wrapper" [class.expired]="isExpired">
+              @if (qrData) {
+                <qrcode
+                  [qrdata]="qrData"
+                  [width]="data.qrSize || 200"
+                  [errorCorrectionLevel]="'M'"
+                  [elementType]="'canvas'"
+                  [cssClass]="'qr-canvas'"
+                ></qrcode>
+              }
+              <!-- Expired Overlay -->
+              @if (isExpired) {
+                <div class="expired-overlay">
+                  <mat-icon>refresh</mat-icon>
+                  <p>QR Code Expired</p>
+                  <button mat-raised-button color="primary" (click)="refreshQrCode()">
+                    Generate New Code
+                  </button>
+                </div>
+              }
+            </div>
+            <!-- Countdown Timer -->
+            @if (data.showCountdown !== false && !isExpired) {
+              <div class="countdown">
+                <mat-icon>timer</mat-icon>
+                <span>Expires in {{ remainingTime }}</span>
+              </div>
+            }
+          </div>
+        }
       </div>
-
-    </div>
+    }
   </div>
 
   <!-- Footer -->
-  <div class="qr-dialog-footer" *ngIf="!isLoading">
-    <button mat-button style="width: 100%;" *ngIf="!isConnected" (click)="connectToMobile()">
-      <mat-icon>qr_code</mat-icon>
-      Regenerate QR Code
-    </button>
-    <button mat-raised-button style="width: 100%;" *ngIf="isConnected" color="primary" (click)="close()">
-      Done
-    </button>
-  </div>
+  @if (!isLoading) {
+    <div class="qr-dialog-footer">
+      @if (!isConnected) {
+        <button mat-button style="width: 100%;" (click)="connectToMobile()">
+          <mat-icon>qr_code</mat-icon>
+          Regenerate QR Code
+        </button>
+      }
+      @if (isConnected) {
+        <button mat-raised-button style="width: 100%;" color="primary" (click)="close()">
+          Done
+        </button>
+      }
+    </div>
+  }
 </div>

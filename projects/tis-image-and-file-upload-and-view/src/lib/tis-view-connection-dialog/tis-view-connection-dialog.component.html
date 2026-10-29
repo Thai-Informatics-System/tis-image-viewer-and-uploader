@@ -17,9 +17,9 @@
               {{ devicesStatus?.isReadyForTransfer ? 'Connected' : 'Connection Issue' }}
             </span>
           </div>
-          <button 
+          <button
             mat-stroked-button
-            color="primary" 
+            color="primary"
             class="refresh-btn"
             (click)="refreshStatus()"
             [disabled]="isCheckingStatus">
@@ -50,7 +50,7 @@
       @if (devicesStatus) {
         <div class="devices-status-card elevation-card">
           <h3 class="card-title">Device Status</h3>
-          
+
           <div class="device-status-row">
             <div class="device-info">
               <mat-icon class="device-icon">computer</mat-icon>
@@ -110,20 +110,24 @@
   </mat-dialog-content>
 
   <mat-dialog-actions align="end" class="dialog-actions">
-    <button 
-      mat-button 
+    <button
+      mat-button
       (click)="close()"
       [disabled]="disconnecting">
       Close
     </button>
     @if (mobileConnection) {
-      <button 
-        mat-raised-button 
-        color="warn" 
+      <button
+        mat-raised-button
+        color="warn"
         (click)="disconnect()"
         [disabled]="disconnecting">
-        <mat-icon *ngIf="!disconnecting">link_off</mat-icon>
-        <mat-spinner *ngIf="disconnecting" diameter="18"></mat-spinner>
+        @if (!disconnecting) {
+          <mat-icon>link_off</mat-icon>
+        }
+        @if (disconnecting) {
+          <mat-spinner diameter="18"></mat-spinner>
+        }
         <span>{{ disconnecting ? 'Disconnecting...' : 'Disconnect' }}</span>
       </button>
     }
