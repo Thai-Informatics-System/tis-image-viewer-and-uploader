@@ -1,5 +1,4 @@
-import { Component, Inject, OnInit, OnDestroy, ViewChild, ElementRef, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Inject, OnInit, OnDestroy, ViewChild, ElementRef, signal, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -21,13 +20,13 @@ export interface CameraCaptureResult {
   selector: 'tis-camera-capture-dialog',
   standalone: true,
   imports: [
-    CommonModule,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   templateUrl: './tis-camera-capture-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tis-camera-capture-dialog.component.css']
 })
 export class TisCameraCaptureDialogComponent implements OnInit, OnDestroy {

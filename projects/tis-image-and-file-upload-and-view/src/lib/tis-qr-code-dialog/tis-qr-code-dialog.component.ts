@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, Inject, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Subject, Subscription, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -28,6 +28,7 @@ export interface TisQrCodeDialogData {
   selector: 'tis-qr-code-dialog',
   standalone: false,
   templateUrl: './tis-qr-code-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./tis-qr-code-dialog.component.css']
 })
 export class TisQrCodeDialogComponent implements OnInit, OnDestroy {

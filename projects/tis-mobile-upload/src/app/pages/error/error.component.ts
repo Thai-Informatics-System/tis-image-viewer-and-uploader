@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,8 +7,9 @@ import { MatButtonModule } from '@angular/material/button';
 @Component({
   selector: 'app-error',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, MatButtonModule],
+  imports: [RouterLink, MatIconModule, MatButtonModule],
   templateUrl: './error.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './error.component.scss'
 })
 export class ErrorComponent {

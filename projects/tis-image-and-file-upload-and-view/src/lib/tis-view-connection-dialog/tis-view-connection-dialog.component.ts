@@ -1,4 +1,4 @@
-import { Component, Inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { TisRemoteUploadService, DevicesOnlineStatus } from '../services/tis-remote-upload.service';
 import { Subject, takeUntil } from 'rxjs';
@@ -19,6 +19,7 @@ export interface TisViewConnectionDialogData {
   selector: 'tis-view-connection-dialog',
   standalone: false,
   templateUrl: './tis-view-connection-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-view-connection-dialog.component.css'
 })
 export class TisViewConnectionDialogComponent implements OnInit, OnDestroy {

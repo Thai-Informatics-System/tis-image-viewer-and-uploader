@@ -11,7 +11,7 @@
 }
 
 .tis-pdf-viewer .download-btn {
-    color: var(--tis-primary);
+    color: var(--tis-primary, var(--mat-sys-primary, #1F6AAD));
     cursor: pointer;
     position: absolute !important;
     top: 10px !important;

@@ -1,12 +1,13 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DialogConfig, OptionConfig, TisImageAndFileUploadAndViewModule, TisRemoteUploadApiEndpoints, TisRemoteUploadConfig, UrlConfig } from 'tis-image-and-file-upload-and-view';
 import { MockSocketAdapterService } from './services/mock-socket-adapter.service';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, TisImageAndFileUploadAndViewModule],
+  imports: [TisImageAndFileUploadAndViewModule],
   templateUrl: './app.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './app.component.scss'
 })
 export class AppComponent {

@@ -1,6 +1,6 @@
 {
   "name": "@servicemind.tis/tis-image-and-file-upload-and-view",
-  "version": "1.5.10",
+  "version": "2.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Thai-Informatics-System/tis-image-viewer-and-uploader.git"
@@ -10,12 +10,14 @@
     "url": "https://github.com/Thai-Informatics-System/tis-image-viewer-and-uploader/issues"
   },
   "peerDependencies": {
-    "@angular/common": "^19.2.0",
-    "@angular/core": "^19.2.0",
-    "@angular/material": "^19.2.8",
-    "@angular/cdk": "^19.2.8",
-    "ngx-extended-pdf-viewer": "^19.2.1",
-    "angularx-qrcode": "^19.0.0"
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/material": "^22.0.0",
+    "@angular/cdk": "^22.0.0",
+    "ngx-extended-pdf-viewer": ">=28.0.0 <32.0.0",
+    "angularx-qrcode": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/platform-browser": "^22.0.0"
   },
   "dependencies": {
     "tslib": "^2.3.0",

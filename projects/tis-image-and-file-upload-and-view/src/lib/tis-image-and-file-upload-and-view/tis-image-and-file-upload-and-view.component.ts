@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, SimpleChanges, OnDestroy } from '@angular/core';
+import { Component, EventEmitter, Input, Output, SimpleChanges, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { TisFileViewerComponent } from '../tis-file-viewer/tis-file-viewer.component';
 import type { DialogConfig, FileViewerDialogData, FileViewerFileType, OptionConfig, UrlConfig, TisRemoteUploadConfig, TisRemoteUploadEvent } from '../interfaces';
 import { TisPreviewImageComponent } from '../tis-preview-image/tis-preview-image.component';
@@ -29,6 +29,7 @@ const generateRandomString = (length: number): string => {
   selector: 'tis-image-and-file-upload-and-view',
   standalone: false,
   templateUrl: './tis-image-and-file-upload-and-view.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-image-and-file-upload-and-view.component.css'
 })
 export class TisImageAndFileUploadAndViewComponent implements OnDestroy {

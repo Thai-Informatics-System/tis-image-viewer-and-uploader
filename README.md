@@ -20,6 +20,17 @@ An all-in-one **image and file upload/view** Angular component by **Thai Informa
 
 ---
 
+## Compatibility
+
+| Library | Angular, Material, CDK | `ngx-extended-pdf-viewer` | `angularx-qrcode` |
+|---|---|---|---|
+| 2.x | 22.x | `>=28.0.0 <32.0.0` | `^22.0.0` |
+| 1.x | 19.x | `^19.2.1` | `^19.0.0` |
+
+**2.0.0** — built with Angular 22 (partial compilation), so it needs Angular 22 and does not work on older versions; stay on 1.x for Angular 19. The PDF viewer peer moves to the Angular-22-capable majors (verified against 28.1, 29.0, 30.0 and 31.0) and `angularx-qrcode` to 22; `@angular/forms` and `@angular/platform-browser` are now declared peers. Neutral text, surface, border and error colours fall back to Material 3 system tokens (`--mat-sys-*`), so the dialogs follow an M3 app theme.
+
+---
+
 ## 📦 Installation
 
 ```bash
@@ -29,7 +40,15 @@ npm install @servicemind.tis/tis-image-and-file-upload-and-view
 ### Peer Dependencies
 
 ```bash
-npm install @angular/material @angular/cdk
+npm install @angular/material@^22 @angular/cdk@^22 ngx-extended-pdf-viewer@^31 angularx-qrcode@^22
+```
+
+The PDF viewer loads its pdf.js files at runtime, so copy them into your app's assets (`angular.json`, build options):
+
+```json
+"assets": [
+  { "glob": "**/*", "input": "node_modules/ngx-extended-pdf-viewer/assets/", "output": "/assets/" }
+]
 ```
 
 ---
@@ -188,11 +207,21 @@ bootstrapApplication(AppComponent, {
 
 ## 🎨 Styling
 
-The component uses Angular Material — ensure a theme is included:
+The component uses Angular Material — ensure a Material 3 theme is included, for example in `styles.scss`:
 
 ```scss
-@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: mat.$azure-palette,
+    typography: Roboto,
+    density: 0,
+  ));
+}
 ```
+
+Optional CSS variables (each falls back to the Material 3 token, then the default): `--tis-primary` (`--mat-sys-primary`, `#1F6AAD`), `--tis-cancel` / `--tis-error` (`--mat-sys-error`), `--tis-download` and `--tis-item-selected` (`--mat-sys-primary`), `--tis-image-picker-height` (`130px`).
 
 ---
 

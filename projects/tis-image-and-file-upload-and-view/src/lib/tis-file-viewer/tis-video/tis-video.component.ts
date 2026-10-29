@@ -1,10 +1,11 @@
-import { Component, Input, SimpleChanges } from '@angular/core';
+import { Component, Input, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import type { SafeUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'tis-video',
   standalone: false,
   templateUrl: './tis-video.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-video.component.css'
 })
 export class TisVideoComponent {

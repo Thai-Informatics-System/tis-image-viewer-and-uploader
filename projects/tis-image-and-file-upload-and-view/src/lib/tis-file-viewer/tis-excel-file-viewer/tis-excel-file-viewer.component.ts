@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import type { SafeUrl } from '@angular/platform-browser';
 import { DomSanitizer } from '@angular/platform-browser';
 
@@ -6,6 +6,7 @@ import { DomSanitizer } from '@angular/platform-browser';
   selector: 'tis-excel-file-viewer',
   standalone: false,
   templateUrl: './tis-excel-file-viewer.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-excel-file-viewer.component.css'
 })
 export class TisExcelFileViewerComponent implements OnChanges {

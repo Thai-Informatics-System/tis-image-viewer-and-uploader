@@ -1,10 +1,11 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 
 @Component({
   selector: 'tis-preview-image',
   standalone: false,
   templateUrl: './tis-preview-image.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './tis-preview-image.component.css'
 })
 export class TisPreviewImageComponent {
